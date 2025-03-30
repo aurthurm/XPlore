@@ -10,7 +10,7 @@ import Footer from "@/components/layout/Footer";
 // Page components
 import HeroSection from "@/components/HeroSection";
 import CategoryNavigation from "@/components/CategoryNavigation";
-import MapView from "@/components/MapView";
+import FallbackMapView from "@/components/FallbackMapView"; // Using fallback until Google Maps is configured
 import BusinessCard from "@/components/BusinessCard";
 import FilterSidebar from "@/components/FilterSidebar";
 import FeaturedDestinations from "@/components/FeaturedDestinations";
@@ -91,7 +91,7 @@ const Home = () => {
           {/* Main Content Area */}
           <div className="lg:col-span-2 order-1 lg:order-2">
             {/* Map View */}
-            <MapView 
+            <FallbackMapView 
               businesses={businesses || []} 
               selectedBusinessId={selectedBusinessId}
               onSelectBusiness={setSelectedBusinessId}
