@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Business } from "@/types";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Layout components
 import Header from "@/components/layout/Header";
@@ -13,6 +14,7 @@ import CategoryNavigation from "@/components/CategoryNavigation";
 import FallbackMapView from "@/components/FallbackMapView"; // Using fallback until Google Maps is configured
 import BusinessCard from "@/components/BusinessCard";
 import FilterSidebar from "@/components/FilterSidebar";
+import FilterDrawer from "@/components/FilterDrawer";
 import FeaturedDestinations from "@/components/FeaturedDestinations";
 import BusinessOwnerCTA from "@/components/BusinessOwnerCTA";
 import ImportDataSection from "@/components/ImportDataSection";
@@ -26,6 +28,8 @@ const Home = () => {
   const [location] = useLocation();
   const [selectedBusinessId, setSelectedBusinessId] = useState<number | undefined>();
   const [sortBy, setSortBy] = useState<string>("relevance");
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const isMobile = useIsMobile();
   const { toast } = useToast();
 
   // Build API URL with filters from URL params
@@ -81,21 +85,38 @@ const Home = () => {
       
       <CategoryNavigation />
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 relative">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Sidebar - Filters */}
-          <div className="lg:col-span-1 order-2 lg:order-1">
+          {/* Left Sidebar - Filters (visible only on desktop) */}
+          <div className="lg:col-span-1 order-2 lg:order-1 hidden lg:block">
             <FilterSidebar />
           </div>
           
           {/* Main Content Area */}
-          <div className="lg:col-span-2 order-1 lg:order-2">
+          <div className={`${isMobile ? 'col-span-1' : 'lg:col-span-2'} order-1 lg:order-2`}>
             {/* Map View */}
             <FallbackMapView 
               businesses={businesses || []} 
               selectedBusinessId={selectedBusinessId}
               onSelectBusiness={setSelectedBusinessId}
             />
+            
+            {/* Filter Drawer for Mobile */}
+            <FilterDrawer 
+              isOpen={isFilterDrawerOpen} 
+              onClose={() => setIsFilterDrawerOpen(false)} 
+            />
+            
+            {/* Floating Filter Button (mobile only) */}
+            {isMobile && (
+              <button
+                onClick={() => setIsFilterDrawerOpen(true)}
+                className="fixed bottom-6 right-6 z-50 bg-primary-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center"
+              >
+                <i className="fas fa-filter mr-2"></i>
+                <span>Filters</span>
+              </button>
+            )}
             
             {/* Listing Results */}
             <div>

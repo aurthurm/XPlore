@@ -5,7 +5,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 
-const FilterSidebar = () => {
+interface FilterSidebarProps {
+  onFilterChange?: () => void;
+  isInDrawer?: boolean;
+}
+
+const FilterSidebar = ({ onFilterChange, isInDrawer = false }: FilterSidebarProps) => {
   const [priceLevel, setPriceLevel] = useState<number[]>([]);
   const [accessibility, setAccessibility] = useState<string[]>([]);
   const [amenities, setAmenities] = useState<string[]>([]);
@@ -43,36 +48,40 @@ const FilterSidebar = () => {
 
   const handlePriceLevel = (level: number) => {
     setPriceLevel(prev => {
-      if (prev.includes(level)) {
-        return prev.filter(p => p !== level);
-      } else {
-        return [...prev, level];
-      }
+      const newValue = prev.includes(level) 
+        ? prev.filter(p => p !== level) 
+        : [...prev, level];
+      if (onFilterChange) onFilterChange();
+      return newValue;
     });
   };
 
   const handleAccessibility = (value: string) => {
     setAccessibility(prev => {
-      if (prev.includes(value)) {
-        return prev.filter(a => a !== value);
-      } else {
-        return [...prev, value];
-      }
+      const newValue = prev.includes(value) 
+        ? prev.filter(a => a !== value) 
+        : [...prev, value];
+      if (onFilterChange) onFilterChange();
+      return newValue;
     });
   };
 
   const handleAmenities = (value: string) => {
     setAmenities(prev => {
-      if (prev.includes(value)) {
-        return prev.filter(a => a !== value);
-      } else {
-        return [...prev, value];
-      }
+      const newValue = prev.includes(value) 
+        ? prev.filter(a => a !== value) 
+        : [...prev, value];
+      if (onFilterChange) onFilterChange();
+      return newValue;
     });
   };
 
   const handleRating = (value: number) => {
-    setRating(prev => prev === value ? null : value);
+    setRating(prev => {
+      const newValue = prev === value ? null : value;
+      if (onFilterChange) onFilterChange();
+      return newValue;
+    });
   };
 
   const applyFilters = () => {
@@ -122,172 +131,187 @@ const FilterSidebar = () => {
     navigate(`/?${params.toString()}`);
   };
 
-  return (
-    <Card className="sticky top-32">
-      <CardContent className="p-4">
-        <h2 className="font-medium text-lg mb-4">Filters</h2>
-        
-        {/* Price Range Filter */}
-        <div className="mb-6">
-          <h3 className="font-medium text-sm text-slate-700 mb-2">Price Range</h3>
-          <div className="flex space-x-2">
-            <Button 
-              variant={priceLevel.includes(1) ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handlePriceLevel(1)}
-            >
-              $
-            </Button>
-            <Button 
-              variant={priceLevel.includes(2) ? "default" : "outline"}
-              size="sm"
-              onClick={() => handlePriceLevel(2)}
-            >
-              $$
-            </Button>
-            <Button 
-              variant={priceLevel.includes(3) ? "default" : "outline"}
-              size="sm"
-              onClick={() => handlePriceLevel(3)}
-            >
-              $$$
-            </Button>
-            <Button 
-              variant={priceLevel.includes(4) ? "default" : "outline"}
-              size="sm"
-              onClick={() => handlePriceLevel(4)}
-            >
-              $$$$
-            </Button>
+  // The filter content to be used in both drawer and sidebar
+  const filterContent = (
+    <>
+      <h2 className="font-medium text-lg mb-4">Filters</h2>
+      
+      {/* Price Range Filter */}
+      <div className="mb-6">
+        <h3 className="font-medium text-sm text-slate-700 mb-2">Price Range</h3>
+        <div className="flex space-x-2">
+          <Button 
+            variant={priceLevel.includes(1) ? "default" : "outline"} 
+            size="sm"
+            onClick={() => handlePriceLevel(1)}
+          >
+            $
+          </Button>
+          <Button 
+            variant={priceLevel.includes(2) ? "default" : "outline"}
+            size="sm"
+            onClick={() => handlePriceLevel(2)}
+          >
+            $$
+          </Button>
+          <Button 
+            variant={priceLevel.includes(3) ? "default" : "outline"}
+            size="sm"
+            onClick={() => handlePriceLevel(3)}
+          >
+            $$$
+          </Button>
+          <Button 
+            variant={priceLevel.includes(4) ? "default" : "outline"}
+            size="sm"
+            onClick={() => handlePriceLevel(4)}
+          >
+            $$$$
+          </Button>
+        </div>
+      </div>
+      
+      {/* Accessibility Filter */}
+      <div className="mb-6">
+        <h3 className="font-medium text-sm text-slate-700 mb-2">Accessibility</h3>
+        <div className="space-y-2">
+          <div className="flex items-center">
+            <Checkbox 
+              id={`wheelchair${isInDrawer ? '-drawer' : ''}`}
+              checked={accessibility.includes('Wheelchair Accessible')}
+              onCheckedChange={() => handleAccessibility('Wheelchair Accessible')}
+            />
+            <Label htmlFor={`wheelchair${isInDrawer ? '-drawer' : ''}`} className="ml-2 text-sm">Wheelchair Accessible</Label>
+          </div>
+          <div className="flex items-center">
+            <Checkbox 
+              id={`pet${isInDrawer ? '-drawer' : ''}`}
+              checked={accessibility.includes('Pet Friendly')}
+              onCheckedChange={() => handleAccessibility('Pet Friendly')}
+            />
+            <Label htmlFor={`pet${isInDrawer ? '-drawer' : ''}`} className="ml-2 text-sm">Pet Friendly</Label>
+          </div>
+          <div className="flex items-center">
+            <Checkbox 
+              id={`family${isInDrawer ? '-drawer' : ''}`}
+              checked={accessibility.includes('Family Friendly')}
+              onCheckedChange={() => handleAccessibility('Family Friendly')}
+            />
+            <Label htmlFor={`family${isInDrawer ? '-drawer' : ''}`} className="ml-2 text-sm">Family Friendly</Label>
           </div>
         </div>
-        
-        {/* Accessibility Filter */}
-        <div className="mb-6">
-          <h3 className="font-medium text-sm text-slate-700 mb-2">Accessibility</h3>
-          <div className="space-y-2">
-            <div className="flex items-center">
-              <Checkbox 
-                id="wheelchair" 
-                checked={accessibility.includes('Wheelchair Accessible')}
-                onCheckedChange={() => handleAccessibility('Wheelchair Accessible')}
-              />
-              <Label htmlFor="wheelchair" className="ml-2 text-sm">Wheelchair Accessible</Label>
-            </div>
-            <div className="flex items-center">
-              <Checkbox 
-                id="pet" 
-                checked={accessibility.includes('Pet Friendly')}
-                onCheckedChange={() => handleAccessibility('Pet Friendly')}
-              />
-              <Label htmlFor="pet" className="ml-2 text-sm">Pet Friendly</Label>
-            </div>
-            <div className="flex items-center">
-              <Checkbox 
-                id="family" 
-                checked={accessibility.includes('Family Friendly')}
-                onCheckedChange={() => handleAccessibility('Family Friendly')}
-              />
-              <Label htmlFor="family" className="ml-2 text-sm">Family Friendly</Label>
-            </div>
+      </div>
+      
+      {/* Amenities Filter */}
+      <div className="mb-6">
+        <h3 className="font-medium text-sm text-slate-700 mb-2">Amenities</h3>
+        <div className="space-y-2">
+          <div className="flex items-center">
+            <Checkbox 
+              id={`wifi${isInDrawer ? '-drawer' : ''}`}
+              checked={amenities.includes('WiFi')}
+              onCheckedChange={() => handleAmenities('WiFi')}
+            />
+            <Label htmlFor={`wifi${isInDrawer ? '-drawer' : ''}`} className="ml-2 text-sm">Free Wi-Fi</Label>
+          </div>
+          <div className="flex items-center">
+            <Checkbox 
+              id={`parking${isInDrawer ? '-drawer' : ''}`}
+              checked={amenities.includes('Parking')}
+              onCheckedChange={() => handleAmenities('Parking')}
+            />
+            <Label htmlFor={`parking${isInDrawer ? '-drawer' : ''}`} className="ml-2 text-sm">Parking Available</Label>
+          </div>
+          <div className="flex items-center">
+            <Checkbox 
+              id={`ac${isInDrawer ? '-drawer' : ''}`}
+              checked={amenities.includes('Air Conditioning')}
+              onCheckedChange={() => handleAmenities('Air Conditioning')}
+            />
+            <Label htmlFor={`ac${isInDrawer ? '-drawer' : ''}`} className="ml-2 text-sm">Air Conditioning</Label>
+          </div>
+          <div className="flex items-center">
+            <Checkbox 
+              id={`pool${isInDrawer ? '-drawer' : ''}`}
+              checked={amenities.includes('Pool')}
+              onCheckedChange={() => handleAmenities('Pool')}
+            />
+            <Label htmlFor={`pool${isInDrawer ? '-drawer' : ''}`} className="ml-2 text-sm">Swimming Pool</Label>
           </div>
         </div>
-        
-        {/* Amenities Filter */}
-        <div className="mb-6">
-          <h3 className="font-medium text-sm text-slate-700 mb-2">Amenities</h3>
-          <div className="space-y-2">
-            <div className="flex items-center">
-              <Checkbox 
-                id="wifi" 
-                checked={amenities.includes('WiFi')}
-                onCheckedChange={() => handleAmenities('WiFi')}
-              />
-              <Label htmlFor="wifi" className="ml-2 text-sm">Free Wi-Fi</Label>
-            </div>
-            <div className="flex items-center">
-              <Checkbox 
-                id="parking" 
-                checked={amenities.includes('Parking')}
-                onCheckedChange={() => handleAmenities('Parking')}
-              />
-              <Label htmlFor="parking" className="ml-2 text-sm">Parking Available</Label>
-            </div>
-            <div className="flex items-center">
-              <Checkbox 
-                id="ac" 
-                checked={amenities.includes('Air Conditioning')}
-                onCheckedChange={() => handleAmenities('Air Conditioning')}
-              />
-              <Label htmlFor="ac" className="ml-2 text-sm">Air Conditioning</Label>
-            </div>
-            <div className="flex items-center">
-              <Checkbox 
-                id="pool" 
-                checked={amenities.includes('Pool')}
-                onCheckedChange={() => handleAmenities('Pool')}
-              />
-              <Label htmlFor="pool" className="ml-2 text-sm">Swimming Pool</Label>
-            </div>
+        <button className="text-sm text-primary-600 font-medium mt-2">Show more</button>
+      </div>
+      
+      {/* Rating Filter */}
+      <div className="mb-6">
+        <h3 className="font-medium text-sm text-slate-700 mb-2">Rating</h3>
+        <div className="space-y-2">
+          <div className="flex items-center">
+            <Checkbox 
+              id={`rating5${isInDrawer ? '-drawer' : ''}`}
+              checked={rating === 5}
+              onCheckedChange={() => handleRating(5)}
+            />
+            <Label htmlFor={`rating5${isInDrawer ? '-drawer' : ''}`} className="ml-2 text-sm flex items-center">
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="fas fa-star text-accent-500"></i>
+            </Label>
           </div>
-          <button className="text-sm text-primary-600 font-medium mt-2">Show more</button>
-        </div>
-        
-        {/* Rating Filter */}
-        <div className="mb-6">
-          <h3 className="font-medium text-sm text-slate-700 mb-2">Rating</h3>
-          <div className="space-y-2">
-            <div className="flex items-center">
-              <Checkbox 
-                id="rating5" 
-                checked={rating === 5}
-                onCheckedChange={() => handleRating(5)}
-              />
-              <Label htmlFor="rating5" className="ml-2 text-sm flex items-center">
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="fas fa-star text-accent-500"></i>
-              </Label>
-            </div>
-            <div className="flex items-center">
-              <Checkbox 
-                id="rating4" 
-                checked={rating === 4}
-                onCheckedChange={() => handleRating(4)}
-              />
-              <Label htmlFor="rating4" className="ml-2 text-sm flex items-center">
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="far fa-star text-slate-300"></i>
-                <span className="ml-1">& up</span>
-              </Label>
-            </div>
-            <div className="flex items-center">
-              <Checkbox 
-                id="rating3" 
-                checked={rating === 3}
-                onCheckedChange={() => handleRating(3)}
-              />
-              <Label htmlFor="rating3" className="ml-2 text-sm flex items-center">
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="fas fa-star text-accent-500"></i>
-                <i className="far fa-star text-slate-300"></i>
-                <i className="far fa-star text-slate-300"></i>
-                <span className="ml-1">& up</span>
-              </Label>
-            </div>
+          <div className="flex items-center">
+            <Checkbox 
+              id={`rating4${isInDrawer ? '-drawer' : ''}`}
+              checked={rating === 4}
+              onCheckedChange={() => handleRating(4)}
+            />
+            <Label htmlFor={`rating4${isInDrawer ? '-drawer' : ''}`} className="ml-2 text-sm flex items-center">
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="far fa-star text-slate-300"></i>
+              <span className="ml-1">& up</span>
+            </Label>
+          </div>
+          <div className="flex items-center">
+            <Checkbox 
+              id={`rating3${isInDrawer ? '-drawer' : ''}`}
+              checked={rating === 3}
+              onCheckedChange={() => handleRating(3)}
+            />
+            <Label htmlFor={`rating3${isInDrawer ? '-drawer' : ''}`} className="ml-2 text-sm flex items-center">
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="fas fa-star text-accent-500"></i>
+              <i className="far fa-star text-slate-300"></i>
+              <i className="far fa-star text-slate-300"></i>
+              <span className="ml-1">& up</span>
+            </Label>
           </div>
         </div>
-        
+      </div>
+      
+      {!isInDrawer && (
         <div className="flex space-x-3">
           <Button onClick={applyFilters} className="flex-1">Apply Filters</Button>
           <Button variant="outline" onClick={resetFilters}>Reset</Button>
         </div>
+      )}
+    </>
+  );
+
+  // If in drawer, just return the content without the Card wrapper
+  if (isInDrawer) {
+    return filterContent;
+  }
+
+  // Otherwise, wrap the content in a Card component for the sidebar
+  return (
+    <Card className="sticky top-32">
+      <CardContent className="p-4">
+        {filterContent}
       </CardContent>
     </Card>
   );
