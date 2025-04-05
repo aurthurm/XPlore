@@ -23,6 +23,9 @@ const Header = () => {
             <Link href="/" className="text-slate-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
               Home
             </Link>
+            <Link href="/itineraries" className="text-slate-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
+              Itineraries
+            </Link>
             <Link href="#" className="text-slate-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
               About
             </Link>

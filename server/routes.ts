@@ -5,6 +5,11 @@ import {
   insertUserSchema, 
   insertBusinessSchema, 
   insertClaimRequestSchema,
+  insertItinerarySchema,
+  insertItineraryDaySchema,
+  insertItineraryItemSchema,
+  insertItineraryCollaboratorSchema,
+  insertTransportBookingSchema,
   searchFilterSchema 
 } from "@shared/schema";
 import { ZodError } from "zod";
@@ -317,6 +322,634 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating claim request:', error);
       res.status(500).json({ message: 'Failed to update claim request' });
+    }
+  });
+
+  // Itinerary Routes
+  // Get user's itineraries
+  app.get('/api/itineraries/user/:userId', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: 'Invalid user ID' });
+      }
+      
+      // Check if user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      const itineraries = await storage.getItineraries(userId);
+      res.json(itineraries);
+    } catch (error) {
+      console.error('Error fetching itineraries:', error);
+      res.status(500).json({ message: 'Failed to fetch itineraries' });
+    }
+  });
+  
+  // Get specific itinerary
+  app.get('/api/itineraries/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid itinerary ID' });
+      }
+      
+      const itinerary = await storage.getItineraryById(id);
+      if (!itinerary) {
+        return res.status(404).json({ message: 'Itinerary not found' });
+      }
+      
+      res.json(itinerary);
+    } catch (error) {
+      console.error('Error fetching itinerary:', error);
+      res.status(500).json({ message: 'Failed to fetch itinerary' });
+    }
+  });
+  
+  // Create new itinerary
+  app.post('/api/itineraries', async (req, res) => {
+    try {
+      try {
+        const itineraryData = insertItinerarySchema.parse(req.body);
+        
+        // Check if user exists
+        const user = await storage.getUser(itineraryData.userId);
+        if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+        
+        const itinerary = await storage.createItinerary(itineraryData);
+        res.status(201).json(itinerary);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return handleValidationError(error, res);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error creating itinerary:', error);
+      res.status(500).json({ message: 'Failed to create itinerary' });
+    }
+  });
+  
+  // Update itinerary
+  app.put('/api/itineraries/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid itinerary ID' });
+      }
+      
+      try {
+        // Use partial to allow updating subset of fields
+        const itineraryData = insertItinerarySchema.partial().parse(req.body);
+        const itinerary = await storage.updateItinerary(id, itineraryData);
+        
+        if (!itinerary) {
+          return res.status(404).json({ message: 'Itinerary not found' });
+        }
+        
+        res.json(itinerary);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return handleValidationError(error, res);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error updating itinerary:', error);
+      res.status(500).json({ message: 'Failed to update itinerary' });
+    }
+  });
+  
+  // Delete itinerary
+  app.delete('/api/itineraries/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid itinerary ID' });
+      }
+      
+      const itinerary = await storage.getItineraryById(id);
+      if (!itinerary) {
+        return res.status(404).json({ message: 'Itinerary not found' });
+      }
+      
+      await storage.deleteItinerary(id);
+      res.json({ message: 'Itinerary deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting itinerary:', error);
+      res.status(500).json({ message: 'Failed to delete itinerary' });
+    }
+  });
+  
+  // Itinerary Days Routes
+  // Get days for an itinerary
+  app.get('/api/itineraries/:itineraryId/days', async (req, res) => {
+    try {
+      const itineraryId = parseInt(req.params.itineraryId);
+      if (isNaN(itineraryId)) {
+        return res.status(400).json({ message: 'Invalid itinerary ID' });
+      }
+      
+      // Check if itinerary exists
+      const itinerary = await storage.getItineraryById(itineraryId);
+      if (!itinerary) {
+        return res.status(404).json({ message: 'Itinerary not found' });
+      }
+      
+      const days = await storage.getItineraryDays(itineraryId);
+      res.json(days);
+    } catch (error) {
+      console.error('Error fetching itinerary days:', error);
+      res.status(500).json({ message: 'Failed to fetch itinerary days' });
+    }
+  });
+  
+  // Create a day for an itinerary
+  app.post('/api/itineraries/:itineraryId/days', async (req, res) => {
+    try {
+      const itineraryId = parseInt(req.params.itineraryId);
+      if (isNaN(itineraryId)) {
+        return res.status(400).json({ message: 'Invalid itinerary ID' });
+      }
+      
+      // Check if itinerary exists
+      const itinerary = await storage.getItineraryById(itineraryId);
+      if (!itinerary) {
+        return res.status(404).json({ message: 'Itinerary not found' });
+      }
+      
+      try {
+        const dayData = { ...req.body, itineraryId };
+        const validatedDay = insertItineraryDaySchema.parse(dayData);
+        const day = await storage.createItineraryDay(validatedDay);
+        res.status(201).json(day);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return handleValidationError(error, res);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error creating itinerary day:', error);
+      res.status(500).json({ message: 'Failed to create itinerary day' });
+    }
+  });
+  
+  // Update a day
+  app.put('/api/itinerary-days/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid day ID' });
+      }
+      
+      try {
+        // Use partial to allow updating subset of fields
+        const dayData = insertItineraryDaySchema.partial().parse(req.body);
+        const day = await storage.updateItineraryDay(id, dayData);
+        
+        if (!day) {
+          return res.status(404).json({ message: 'Day not found' });
+        }
+        
+        res.json(day);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return handleValidationError(error, res);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error updating itinerary day:', error);
+      res.status(500).json({ message: 'Failed to update itinerary day' });
+    }
+  });
+  
+  // Delete a day
+  app.delete('/api/itinerary-days/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid day ID' });
+      }
+      
+      const day = await storage.getItineraryDayById(id);
+      if (!day) {
+        return res.status(404).json({ message: 'Day not found' });
+      }
+      
+      await storage.deleteItineraryDay(id);
+      res.json({ message: 'Day deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting itinerary day:', error);
+      res.status(500).json({ message: 'Failed to delete itinerary day' });
+    }
+  });
+  
+  // Itinerary Items Routes
+  // Get items for a day
+  app.get('/api/itinerary-days/:dayId/items', async (req, res) => {
+    try {
+      const dayId = parseInt(req.params.dayId);
+      if (isNaN(dayId)) {
+        return res.status(400).json({ message: 'Invalid day ID' });
+      }
+      
+      // Check if day exists
+      const day = await storage.getItineraryDayById(dayId);
+      if (!day) {
+        return res.status(404).json({ message: 'Day not found' });
+      }
+      
+      const items = await storage.getItineraryItems(dayId);
+      res.json(items);
+    } catch (error) {
+      console.error('Error fetching itinerary items:', error);
+      res.status(500).json({ message: 'Failed to fetch itinerary items' });
+    }
+  });
+  
+  // Create an item for a day
+  app.post('/api/itinerary-days/:dayId/items', async (req, res) => {
+    try {
+      const dayId = parseInt(req.params.dayId);
+      if (isNaN(dayId)) {
+        return res.status(400).json({ message: 'Invalid day ID' });
+      }
+      
+      // Check if day exists
+      const day = await storage.getItineraryDayById(dayId);
+      if (!day) {
+        return res.status(404).json({ message: 'Day not found' });
+      }
+      
+      try {
+        const itemData = { ...req.body, dayId };
+        
+        // If businessId is provided, check if it exists
+        if (itemData.businessId) {
+          const business = await storage.getBusinessById(itemData.businessId);
+          if (!business) {
+            return res.status(404).json({ message: 'Business not found' });
+          }
+        }
+        
+        const validatedItem = insertItineraryItemSchema.parse(itemData);
+        const item = await storage.createItineraryItem(validatedItem);
+        res.status(201).json(item);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return handleValidationError(error, res);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error creating itinerary item:', error);
+      res.status(500).json({ message: 'Failed to create itinerary item' });
+    }
+  });
+  
+  // Update an item
+  app.put('/api/itinerary-items/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid item ID' });
+      }
+      
+      try {
+        // Use partial to allow updating subset of fields
+        const itemData = insertItineraryItemSchema.partial().parse(req.body);
+        
+        // If businessId is provided, check if it exists
+        if (itemData.businessId) {
+          const business = await storage.getBusinessById(itemData.businessId);
+          if (!business) {
+            return res.status(404).json({ message: 'Business not found' });
+          }
+        }
+        
+        const item = await storage.updateItineraryItem(id, itemData);
+        
+        if (!item) {
+          return res.status(404).json({ message: 'Item not found' });
+        }
+        
+        res.json(item);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return handleValidationError(error, res);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error updating itinerary item:', error);
+      res.status(500).json({ message: 'Failed to update itinerary item' });
+    }
+  });
+  
+  // Delete an item
+  app.delete('/api/itinerary-items/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid item ID' });
+      }
+      
+      const item = await storage.getItineraryItemById(id);
+      if (!item) {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+      
+      await storage.deleteItineraryItem(id);
+      res.json({ message: 'Item deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting itinerary item:', error);
+      res.status(500).json({ message: 'Failed to delete itinerary item' });
+    }
+  });
+  
+  // Collaborators Routes
+  // Get collaborators for an itinerary
+  app.get('/api/itineraries/:itineraryId/collaborators', async (req, res) => {
+    try {
+      const itineraryId = parseInt(req.params.itineraryId);
+      if (isNaN(itineraryId)) {
+        return res.status(400).json({ message: 'Invalid itinerary ID' });
+      }
+      
+      // Check if itinerary exists
+      const itinerary = await storage.getItineraryById(itineraryId);
+      if (!itinerary) {
+        return res.status(404).json({ message: 'Itinerary not found' });
+      }
+      
+      const collaborators = await storage.getItineraryCollaborators(itineraryId);
+      res.json(collaborators);
+    } catch (error) {
+      console.error('Error fetching collaborators:', error);
+      res.status(500).json({ message: 'Failed to fetch collaborators' });
+    }
+  });
+  
+  // Add a collaborator
+  app.post('/api/itineraries/:itineraryId/collaborators', async (req, res) => {
+    try {
+      const itineraryId = parseInt(req.params.itineraryId);
+      if (isNaN(itineraryId)) {
+        return res.status(400).json({ message: 'Invalid itinerary ID' });
+      }
+      
+      // Check if itinerary exists
+      const itinerary = await storage.getItineraryById(itineraryId);
+      if (!itinerary) {
+        return res.status(404).json({ message: 'Itinerary not found' });
+      }
+      
+      try {
+        const collaboratorData = { ...req.body, itineraryId };
+        const validatedCollaborator = insertItineraryCollaboratorSchema.parse(collaboratorData);
+        
+        // Check if collaborator already exists
+        const collaborators = await storage.getItineraryCollaborators(itineraryId);
+        const existingCollaborator = collaborators.find(c => c.email === validatedCollaborator.email);
+        if (existingCollaborator) {
+          return res.status(400).json({ message: 'Collaborator already exists' });
+        }
+        
+        const collaborator = await storage.addItineraryCollaborator(validatedCollaborator);
+        res.status(201).json(collaborator);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return handleValidationError(error, res);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error adding collaborator:', error);
+      res.status(500).json({ message: 'Failed to add collaborator' });
+    }
+  });
+  
+  // Update a collaborator
+  app.put('/api/itineraries/:itineraryId/collaborators/:email', async (req, res) => {
+    try {
+      const itineraryId = parseInt(req.params.itineraryId);
+      if (isNaN(itineraryId)) {
+        return res.status(400).json({ message: 'Invalid itinerary ID' });
+      }
+      
+      const { email } = req.params;
+      if (!email) {
+        return res.status(400).json({ message: 'Invalid email' });
+      }
+      
+      try {
+        // Use partial to allow updating subset of fields
+        const collaboratorData = insertItineraryCollaboratorSchema.partial().parse(req.body);
+        
+        // Get collaborators to see if the one we're updating exists
+        const collaborators = await storage.getItineraryCollaborators(itineraryId);
+        const existingCollaborator = collaborators.find(c => c.email === email);
+        if (!existingCollaborator) {
+          return res.status(404).json({ message: 'Collaborator not found' });
+        }
+        
+        const collaborator = await storage.updateItineraryCollaborator(itineraryId, email, collaboratorData);
+        
+        if (!collaborator) {
+          return res.status(404).json({ message: 'Collaborator not found' });
+        }
+        
+        res.json(collaborator);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return handleValidationError(error, res);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error updating collaborator:', error);
+      res.status(500).json({ message: 'Failed to update collaborator' });
+    }
+  });
+  
+  // Remove a collaborator
+  app.delete('/api/itineraries/:itineraryId/collaborators/:email', async (req, res) => {
+    try {
+      const itineraryId = parseInt(req.params.itineraryId);
+      if (isNaN(itineraryId)) {
+        return res.status(400).json({ message: 'Invalid itinerary ID' });
+      }
+      
+      const { email } = req.params;
+      if (!email) {
+        return res.status(400).json({ message: 'Invalid email' });
+      }
+      
+      // Get collaborators to see if the one we're removing exists
+      const collaborators = await storage.getItineraryCollaborators(itineraryId);
+      const existingCollaborator = collaborators.find(c => c.email === email);
+      if (!existingCollaborator) {
+        return res.status(404).json({ message: 'Collaborator not found' });
+      }
+      
+      await storage.removeItineraryCollaborator(itineraryId, email);
+      res.json({ message: 'Collaborator removed successfully' });
+    } catch (error) {
+      console.error('Error removing collaborator:', error);
+      res.status(500).json({ message: 'Failed to remove collaborator' });
+    }
+  });
+  
+  // Transport Booking Routes
+  // Get bookings for a user
+  app.get('/api/transport-bookings/user/:userId', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: 'Invalid user ID' });
+      }
+      
+      // Check if user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      const bookings = await storage.getTransportBookings(userId);
+      res.json(bookings);
+    } catch (error) {
+      console.error('Error fetching transport bookings:', error);
+      res.status(500).json({ message: 'Failed to fetch transport bookings' });
+    }
+  });
+  
+  // Get bookings for an itinerary
+  app.get('/api/itineraries/:itineraryId/transport-bookings', async (req, res) => {
+    try {
+      const itineraryId = parseInt(req.params.itineraryId);
+      if (isNaN(itineraryId)) {
+        return res.status(400).json({ message: 'Invalid itinerary ID' });
+      }
+      
+      // Check if itinerary exists
+      const itinerary = await storage.getItineraryById(itineraryId);
+      if (!itinerary) {
+        return res.status(404).json({ message: 'Itinerary not found' });
+      }
+      
+      const bookings = await storage.getTransportBookingsByItinerary(itineraryId);
+      res.json(bookings);
+    } catch (error) {
+      console.error('Error fetching transport bookings for itinerary:', error);
+      res.status(500).json({ message: 'Failed to fetch transport bookings for itinerary' });
+    }
+  });
+  
+  // Create a transport booking
+  app.post('/api/transport-bookings', async (req, res) => {
+    try {
+      try {
+        const bookingData = insertTransportBookingSchema.parse(req.body);
+        
+        // Check if user exists
+        const user = await storage.getUser(bookingData.userId);
+        if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+        
+        // Check if itinerary exists, if provided
+        if (bookingData.itineraryId) {
+          const itinerary = await storage.getItineraryById(bookingData.itineraryId);
+          if (!itinerary) {
+            return res.status(404).json({ message: 'Itinerary not found' });
+          }
+        }
+        
+        const booking = await storage.createTransportBooking(bookingData);
+        res.status(201).json(booking);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return handleValidationError(error, res);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error creating transport booking:', error);
+      res.status(500).json({ message: 'Failed to create transport booking' });
+    }
+  });
+  
+  // Update a transport booking
+  app.put('/api/transport-bookings/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid booking ID' });
+      }
+      
+      try {
+        // Use partial to allow updating subset of fields
+        const bookingData = insertTransportBookingSchema.partial().parse(req.body);
+        
+        // If user ID is provided, check if user exists
+        if (bookingData.userId) {
+          const user = await storage.getUser(bookingData.userId);
+          if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+          }
+        }
+        
+        // If itinerary ID is provided, check if itinerary exists
+        if (bookingData.itineraryId) {
+          const itinerary = await storage.getItineraryById(bookingData.itineraryId);
+          if (!itinerary) {
+            return res.status(404).json({ message: 'Itinerary not found' });
+          }
+        }
+        
+        const booking = await storage.updateTransportBooking(id, bookingData);
+        
+        if (!booking) {
+          return res.status(404).json({ message: 'Booking not found' });
+        }
+        
+        res.json(booking);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return handleValidationError(error, res);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error updating transport booking:', error);
+      res.status(500).json({ message: 'Failed to update transport booking' });
+    }
+  });
+  
+  // Delete a transport booking
+  app.delete('/api/transport-bookings/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid booking ID' });
+      }
+      
+      const booking = await storage.getTransportBookingById(id);
+      if (!booking) {
+        return res.status(404).json({ message: 'Booking not found' });
+      }
+      
+      await storage.deleteTransportBooking(id);
+      res.json({ message: 'Booking deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting transport booking:', error);
+      res.status(500).json({ message: 'Failed to delete transport booking' });
     }
   });
 

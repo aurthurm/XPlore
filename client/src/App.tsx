@@ -9,6 +9,9 @@ import Home from "@/pages/Home";
 import BusinessDetails from "@/pages/BusinessDetails";
 import BusinessDashboard from "@/pages/BusinessDashboard";
 import BusinessClaim from "@/pages/BusinessClaim";
+import Itineraries from "@/pages/Itineraries";
+import ItineraryDetails from "@/pages/ItineraryDetails";
+import ItineraryMap from "@/pages/ItineraryMap";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,6 +33,9 @@ function Router() {
       <Route path="/business/:id" component={BusinessDetails} />
       <Route path="/dashboard" component={BusinessDashboard} />
       <Route path="/claim/:id?" component={BusinessClaim} />
+      <Route path="/itineraries" component={Itineraries} />
+      <Route path="/itinerary/:id" component={ItineraryDetails} />
+      <Route path="/itinerary/:id/map" component={ItineraryMap} />
       <Route component={NotFound} />
     </Switch>
   );

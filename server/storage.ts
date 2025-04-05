@@ -1,9 +1,15 @@
 import { 
   categories, users, businesses, claimRequests,
+  itineraries, itineraryDays, itineraryItems, itineraryCollaborators, transportBookings,
   type User, type InsertUser,
   type Category, type InsertCategory,
   type Business, type InsertBusiness,
   type ClaimRequest, type InsertClaimRequest,
+  type Itinerary, type InsertItinerary,
+  type ItineraryDay, type InsertItineraryDay,
+  type ItineraryItem, type InsertItineraryItem,
+  type ItineraryCollaborator, type InsertItineraryCollaborator,
+  type TransportBooking, type InsertTransportBooking,
   type SearchFilter
 } from "@shared/schema";
 
@@ -33,6 +39,41 @@ export interface IStorage {
   getClaimRequestsByBusinessId(businessId: number): Promise<ClaimRequest[]>;
   getClaimRequestsByUserId(userId: number): Promise<ClaimRequest[]>;
   updateClaimRequest(id: number, status: string): Promise<ClaimRequest | undefined>;
+  
+  // Itinerary methods
+  getItineraries(userId: number): Promise<Itinerary[]>;
+  getItineraryById(id: number): Promise<Itinerary | undefined>;
+  createItinerary(itinerary: InsertItinerary): Promise<Itinerary>;
+  updateItinerary(id: number, itinerary: Partial<InsertItinerary>): Promise<Itinerary | undefined>;
+  deleteItinerary(id: number): Promise<boolean>;
+  
+  // Itinerary day methods
+  getItineraryDays(itineraryId: number): Promise<ItineraryDay[]>;
+  getItineraryDayById(id: number): Promise<ItineraryDay | undefined>;
+  createItineraryDay(day: InsertItineraryDay): Promise<ItineraryDay>;
+  updateItineraryDay(id: number, day: Partial<InsertItineraryDay>): Promise<ItineraryDay | undefined>;
+  deleteItineraryDay(id: number): Promise<boolean>;
+  
+  // Itinerary item methods
+  getItineraryItems(dayId: number): Promise<ItineraryItem[]>;
+  getItineraryItemById(id: number): Promise<ItineraryItem | undefined>;
+  createItineraryItem(item: InsertItineraryItem): Promise<ItineraryItem>;
+  updateItineraryItem(id: number, item: Partial<InsertItineraryItem>): Promise<ItineraryItem | undefined>;
+  deleteItineraryItem(id: number): Promise<boolean>;
+  
+  // Itinerary collaborator methods
+  getItineraryCollaborators(itineraryId: number): Promise<ItineraryCollaborator[]>;
+  addItineraryCollaborator(collaborator: InsertItineraryCollaborator): Promise<ItineraryCollaborator>;
+  updateItineraryCollaborator(itineraryId: number, email: string, data: Partial<InsertItineraryCollaborator>): Promise<ItineraryCollaborator | undefined>;
+  removeItineraryCollaborator(itineraryId: number, email: string): Promise<boolean>;
+  
+  // Transport booking methods
+  getTransportBookings(userId: number): Promise<TransportBooking[]>;
+  getTransportBookingsByItinerary(itineraryId: number): Promise<TransportBooking[]>;
+  getTransportBookingById(id: number): Promise<TransportBooking | undefined>;
+  createTransportBooking(booking: InsertTransportBooking): Promise<TransportBooking>;
+  updateTransportBooking(id: number, booking: Partial<InsertTransportBooking>): Promise<TransportBooking | undefined>;
+  deleteTransportBooking(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -40,22 +81,40 @@ export class MemStorage implements IStorage {
   private categories: Map<number, Category>;
   private businesses: Map<number, Business>;
   private claimRequests: Map<number, ClaimRequest>;
+  private itineraries: Map<number, Itinerary>;
+  private itineraryDays: Map<number, ItineraryDay>;
+  private itineraryItems: Map<number, ItineraryItem>;
+  private itineraryCollaborators: Map<string, ItineraryCollaborator>; // key: itineraryId-email
+  private transportBookings: Map<number, TransportBooking>;
   
   private userId: number;
   private categoryId: number;
   private businessId: number;
   private claimRequestId: number;
+  private itineraryId: number;
+  private itineraryDayId: number;
+  private itineraryItemId: number;
+  private transportBookingId: number;
   
   constructor() {
     this.users = new Map();
     this.categories = new Map();
     this.businesses = new Map();
     this.claimRequests = new Map();
+    this.itineraries = new Map();
+    this.itineraryDays = new Map();
+    this.itineraryItems = new Map();
+    this.itineraryCollaborators = new Map();
+    this.transportBookings = new Map();
     
     this.userId = 1;
     this.categoryId = 1;
     this.businessId = 1;
     this.claimRequestId = 1;
+    this.itineraryId = 1;
+    this.itineraryDayId = 1;
+    this.itineraryItemId = 1;
+    this.transportBookingId = 1;
     
     // Initialize with default categories
     this.initializeCategories();
@@ -266,6 +325,338 @@ export class MemStorage implements IStorage {
     const updatedRequest = { ...existingRequest, status };
     this.claimRequests.set(id, updatedRequest);
     return updatedRequest;
+  }
+
+  // Itinerary methods
+  async getItineraries(userId: number): Promise<Itinerary[]> {
+    return Array.from(this.itineraries.values()).filter(
+      (itinerary) => itinerary.userId === userId
+    );
+  }
+
+  async getItineraryById(id: number): Promise<Itinerary | undefined> {
+    return this.itineraries.get(id);
+  }
+
+  async createItinerary(insertItinerary: InsertItinerary): Promise<Itinerary> {
+    const id = this.itineraryId++;
+    const timestamp = new Date();
+    const itinerary: Itinerary = { 
+      ...insertItinerary, 
+      id, 
+      createdAt: timestamp, 
+      updatedAt: timestamp 
+    };
+    this.itineraries.set(id, itinerary);
+    return itinerary;
+  }
+
+  async updateItinerary(id: number, partialItinerary: Partial<InsertItinerary>): Promise<Itinerary | undefined> {
+    const existingItinerary = this.itineraries.get(id);
+    if (!existingItinerary) return undefined;
+    
+    const updatedItinerary = { 
+      ...existingItinerary, 
+      ...partialItinerary, 
+      updatedAt: new Date() 
+    };
+    this.itineraries.set(id, updatedItinerary);
+    return updatedItinerary;
+  }
+
+  async deleteItinerary(id: number): Promise<boolean> {
+    // First delete all related entities
+    
+    // Delete all itinerary days and their items
+    const days = await this.getItineraryDays(id);
+    for (const day of days) {
+      await this.deleteItineraryDay(day.id);
+    }
+    
+    // Delete all collaborators
+    const collaborators = await this.getItineraryCollaborators(id);
+    for (const collaborator of collaborators) {
+      await this.removeItineraryCollaborator(id, collaborator.email);
+    }
+    
+    // Delete the itinerary itself
+    return this.itineraries.delete(id);
+  }
+
+  // Itinerary day methods
+  async getItineraryDays(itineraryId: number): Promise<ItineraryDay[]> {
+    const days = Array.from(this.itineraryDays.values()).filter(
+      (day) => day.itineraryId === itineraryId
+    );
+    
+    // Sort by day number
+    return days.sort((a, b) => a.dayNumber - b.dayNumber);
+  }
+
+  async getItineraryDayById(id: number): Promise<ItineraryDay | undefined> {
+    return this.itineraryDays.get(id);
+  }
+
+  async createItineraryDay(insertDay: InsertItineraryDay): Promise<ItineraryDay> {
+    const id = this.itineraryDayId++;
+    const timestamp = new Date();
+    const day: ItineraryDay = { ...insertDay, id, createdAt: timestamp };
+    this.itineraryDays.set(id, day);
+    
+    // Update the parent itinerary's updatedAt
+    const itinerary = await this.getItineraryById(insertDay.itineraryId);
+    if (itinerary) {
+      await this.updateItinerary(itinerary.id, {});
+    }
+    
+    return day;
+  }
+
+  async updateItineraryDay(id: number, partialDay: Partial<InsertItineraryDay>): Promise<ItineraryDay | undefined> {
+    const existingDay = this.itineraryDays.get(id);
+    if (!existingDay) return undefined;
+    
+    const updatedDay = { ...existingDay, ...partialDay };
+    this.itineraryDays.set(id, updatedDay);
+    
+    // Update the parent itinerary's updatedAt
+    const itinerary = await this.getItineraryById(existingDay.itineraryId);
+    if (itinerary) {
+      await this.updateItinerary(itinerary.id, {});
+    }
+    
+    return updatedDay;
+  }
+
+  async deleteItineraryDay(id: number): Promise<boolean> {
+    const day = this.itineraryDays.get(id);
+    if (!day) return false;
+    
+    // First delete all items in this day
+    const items = await this.getItineraryItems(id);
+    for (const item of items) {
+      await this.deleteItineraryItem(item.id);
+    }
+    
+    // Update the parent itinerary's updatedAt
+    const itinerary = await this.getItineraryById(day.itineraryId);
+    if (itinerary) {
+      await this.updateItinerary(itinerary.id, {});
+    }
+    
+    // Delete the day itself
+    return this.itineraryDays.delete(id);
+  }
+
+  // Itinerary item methods
+  async getItineraryItems(dayId: number): Promise<ItineraryItem[]> {
+    const items = Array.from(this.itineraryItems.values()).filter(
+      (item) => item.dayId === dayId
+    );
+    
+    // Sort by start time if available
+    return items.sort((a, b) => {
+      if (!a.startTime) return 1;
+      if (!b.startTime) return -1;
+      return a.startTime > b.startTime ? 1 : -1;
+    });
+  }
+
+  async getItineraryItemById(id: number): Promise<ItineraryItem | undefined> {
+    return this.itineraryItems.get(id);
+  }
+
+  async createItineraryItem(insertItem: InsertItineraryItem): Promise<ItineraryItem> {
+    const id = this.itineraryItemId++;
+    const timestamp = new Date();
+    const item: ItineraryItem = { ...insertItem, id, createdAt: timestamp };
+    this.itineraryItems.set(id, item);
+    
+    // Update the parent day's itinerary updatedAt
+    const day = await this.getItineraryDayById(insertItem.dayId);
+    if (day) {
+      const itinerary = await this.getItineraryById(day.itineraryId);
+      if (itinerary) {
+        await this.updateItinerary(itinerary.id, {});
+      }
+    }
+    
+    return item;
+  }
+
+  async updateItineraryItem(id: number, partialItem: Partial<InsertItineraryItem>): Promise<ItineraryItem | undefined> {
+    const existingItem = this.itineraryItems.get(id);
+    if (!existingItem) return undefined;
+    
+    const updatedItem = { ...existingItem, ...partialItem };
+    this.itineraryItems.set(id, updatedItem);
+    
+    // Update the parent day's itinerary updatedAt
+    const day = await this.getItineraryDayById(existingItem.dayId);
+    if (day) {
+      const itinerary = await this.getItineraryById(day.itineraryId);
+      if (itinerary) {
+        await this.updateItinerary(itinerary.id, {});
+      }
+    }
+    
+    return updatedItem;
+  }
+
+  async deleteItineraryItem(id: number): Promise<boolean> {
+    const item = this.itineraryItems.get(id);
+    if (!item) return false;
+    
+    // Update the parent day's itinerary updatedAt
+    const day = await this.getItineraryDayById(item.dayId);
+    if (day) {
+      const itinerary = await this.getItineraryById(day.itineraryId);
+      if (itinerary) {
+        await this.updateItinerary(itinerary.id, {});
+      }
+    }
+    
+    return this.itineraryItems.delete(id);
+  }
+
+  // Itinerary collaborator methods
+  async getItineraryCollaborators(itineraryId: number): Promise<ItineraryCollaborator[]> {
+    return Array.from(this.itineraryCollaborators.values()).filter(
+      (collaborator) => collaborator.itineraryId === itineraryId
+    );
+  }
+
+  async addItineraryCollaborator(insertCollaborator: InsertItineraryCollaborator): Promise<ItineraryCollaborator> {
+    const key = `${insertCollaborator.itineraryId}-${insertCollaborator.email}`;
+    const timestamp = new Date();
+    const collaborator: ItineraryCollaborator = { 
+      ...insertCollaborator, 
+      createdAt: timestamp,
+      inviteStatus: 'pending',
+      accessLevel: insertCollaborator.accessLevel || 'view'
+    };
+    this.itineraryCollaborators.set(key, collaborator);
+    
+    // Update the parent itinerary's updatedAt
+    const itinerary = await this.getItineraryById(insertCollaborator.itineraryId);
+    if (itinerary) {
+      await this.updateItinerary(itinerary.id, {});
+    }
+    
+    return collaborator;
+  }
+
+  async updateItineraryCollaborator(
+    itineraryId: number, 
+    email: string, 
+    data: Partial<InsertItineraryCollaborator>
+  ): Promise<ItineraryCollaborator | undefined> {
+    const key = `${itineraryId}-${email}`;
+    const existingCollaborator = this.itineraryCollaborators.get(key);
+    if (!existingCollaborator) return undefined;
+    
+    const updatedCollaborator = { ...existingCollaborator, ...data };
+    this.itineraryCollaborators.set(key, updatedCollaborator);
+    
+    // Update the parent itinerary's updatedAt
+    const itinerary = await this.getItineraryById(itineraryId);
+    if (itinerary) {
+      await this.updateItinerary(itinerary.id, {});
+    }
+    
+    return updatedCollaborator;
+  }
+
+  async removeItineraryCollaborator(itineraryId: number, email: string): Promise<boolean> {
+    const key = `${itineraryId}-${email}`;
+    
+    // Update the parent itinerary's updatedAt
+    const itinerary = await this.getItineraryById(itineraryId);
+    if (itinerary) {
+      await this.updateItinerary(itinerary.id, {});
+    }
+    
+    return this.itineraryCollaborators.delete(key);
+  }
+
+  // Transport booking methods
+  async getTransportBookings(userId: number): Promise<TransportBooking[]> {
+    return Array.from(this.transportBookings.values()).filter(
+      (booking) => booking.userId === userId
+    ).sort((a, b) => {
+      return new Date(a.bookingDate) > new Date(b.bookingDate) ? 1 : -1;
+    });
+  }
+
+  async getTransportBookingsByItinerary(itineraryId: number): Promise<TransportBooking[]> {
+    return Array.from(this.transportBookings.values()).filter(
+      (booking) => booking.itineraryId === itineraryId
+    ).sort((a, b) => {
+      return new Date(a.bookingDate) > new Date(b.bookingDate) ? 1 : -1;
+    });
+  }
+
+  async getTransportBookingById(id: number): Promise<TransportBooking | undefined> {
+    return this.transportBookings.get(id);
+  }
+
+  async createTransportBooking(insertBooking: InsertTransportBooking): Promise<TransportBooking> {
+    const id = this.transportBookingId++;
+    const timestamp = new Date();
+    const booking: TransportBooking = { 
+      ...insertBooking, 
+      id, 
+      createdAt: timestamp, 
+      updatedAt: timestamp 
+    };
+    this.transportBookings.set(id, booking);
+    
+    // If this is part of an itinerary, update the itinerary's updatedAt
+    if (insertBooking.itineraryId) {
+      const itinerary = await this.getItineraryById(insertBooking.itineraryId);
+      if (itinerary) {
+        await this.updateItinerary(itinerary.id, {});
+      }
+    }
+    
+    return booking;
+  }
+
+  async updateTransportBooking(id: number, partialBooking: Partial<InsertTransportBooking>): Promise<TransportBooking | undefined> {
+    const existingBooking = this.transportBookings.get(id);
+    if (!existingBooking) return undefined;
+    
+    const updatedBooking = { 
+      ...existingBooking, 
+      ...partialBooking, 
+      updatedAt: new Date() 
+    };
+    this.transportBookings.set(id, updatedBooking);
+    
+    // If this is part of an itinerary, update the itinerary's updatedAt
+    if (existingBooking.itineraryId) {
+      const itinerary = await this.getItineraryById(existingBooking.itineraryId);
+      if (itinerary) {
+        await this.updateItinerary(itinerary.id, {});
+      }
+    }
+    
+    return updatedBooking;
+  }
+
+  async deleteTransportBooking(id: number): Promise<boolean> {
+    const booking = this.transportBookings.get(id);
+    if (!booking) return false;
+    
+    // If this is part of an itinerary, update the itinerary's updatedAt
+    if (booking.itineraryId) {
+      const itinerary = await this.getItineraryById(booking.itineraryId);
+      if (itinerary) {
+        await this.updateItinerary(itinerary.id, {});
+      }
+    }
+    
+    return this.transportBookings.delete(id);
   }
 }
 

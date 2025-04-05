@@ -30,6 +30,9 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
               <Link href="/" onClick={onClose} className="text-lg font-medium p-2 hover:bg-slate-100 rounded-md">
                 Home
               </Link>
+              <Link href="/itineraries" onClick={onClose} className="text-lg font-medium p-2 hover:bg-slate-100 rounded-md">
+                Itineraries
+              </Link>
               <Link href="#" onClick={onClose} className="text-lg font-medium p-2 hover:bg-slate-100 rounded-md">
                 About
               </Link>
