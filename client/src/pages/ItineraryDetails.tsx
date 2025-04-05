@@ -49,8 +49,10 @@ const itemFormSchema = z.object({
   type: z.enum(['activity', 'accommodation', 'transportation', 'custom']),
   title: z.string().min(2, { message: "Title must be at least 2 characters" }),
   description: z.string().optional(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
+  startTime: z.string().optional()
+    .transform(val => val === '' ? null : val),
+  endTime: z.string().optional()
+    .transform(val => val === '' ? null : val),
   location: z.string().optional(),
   cost: z.string().optional().transform(val => val ? Number(val) : undefined),
   businessId: z.string().optional().transform(val => val ? Number(val) : undefined),
@@ -164,7 +166,14 @@ export default function ItineraryDetails() {
       
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (newDay) => {
+      // Initialize empty items array for the new day
+      setDayItems(prev => ({
+        ...prev,
+        [newDay.id]: []
+      }));
+      
+      // Refetch itinerary days
       queryClient.invalidateQueries({ queryKey: ['/api/itineraries', itineraryId, 'days'] });
       toast({
         title: "Day added",
@@ -195,7 +204,15 @@ export default function ItineraryDetails() {
       
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, deletedDayId) => {
+      // Remove day items from state
+      setDayItems(prev => {
+        const newState = { ...prev };
+        delete newState[deletedDayId];
+        return newState;
+      });
+      
+      // Refetch itinerary days
       queryClient.invalidateQueries({ queryKey: ['/api/itineraries', itineraryId, 'days'] });
       toast({
         title: "Day deleted",
@@ -229,9 +246,21 @@ export default function ItineraryDetails() {
       
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (newItem) => {
       if (selectedDayId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/itinerary-days', selectedDayId, 'items'] });
+        // Update local state
+        setDayItems(prev => {
+          const dayItems = prev[selectedDayId] || [];
+          return {
+            ...prev,
+            [selectedDayId]: [...dayItems, newItem]
+          };
+        });
+        
+        // Also invalidate the query to refresh data
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/itinerary-days', 'all-items'] 
+        });
       }
       toast({
         title: "Item added",
@@ -262,11 +291,31 @@ export default function ItineraryDetails() {
       
       return response.json();
     },
-    onSuccess: (_, variables, context) => {
-      // Invalidate all day items queries
-      days?.forEach(day => {
-        queryClient.invalidateQueries({ queryKey: ['/api/itinerary-days', day.id, 'items'] });
+    onSuccess: (_, deletedItemId) => {
+      // Find which day this item belonged to and update local state
+      for (const [dayId, items] of Object.entries(dayItems)) {
+        const dayIdNum = parseInt(dayId);
+        const itemIndex = items.findIndex(item => item.id === deletedItemId);
+        
+        if (itemIndex !== -1) {
+          // Update the local state
+          setDayItems(prev => {
+            const updatedItems = [...prev[dayIdNum]];
+            updatedItems.splice(itemIndex, 1);
+            return {
+              ...prev,
+              [dayIdNum]: updatedItems
+            };
+          });
+          break;
+        }
+      }
+      
+      // Also invalidate the query to refresh data
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/itinerary-days', 'all-items'] 
       });
+      
       toast({
         title: "Item deleted",
         description: "The item has been removed from your itinerary.",
@@ -433,19 +482,36 @@ export default function ItineraryDetails() {
   // Get days sorted by day number
   const sortedDays = days ? [...days].sort((a, b) => a.dayNumber - b.dayNumber) : [];
   
-  // Dynamic fetching of items for each day
-  const dayItemsQueries = sortedDays.map(day => {
-    return useQuery<ItineraryItem[]>({
-      queryKey: ['/api/itinerary-days', day.id, 'items'],
-      queryFn: async () => {
-        const response = await fetch(`/api/itinerary-days/${day.id}/items`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch items for day ${day.dayNumber}`);
+  // Create a state to store items for each day
+  const [dayItems, setDayItems] = useState<Record<number, ItineraryItem[]>>({});
+  
+  // Use a single query with enabled based on days being loaded
+  const { isLoading: itemsLoading } = useQuery({
+    queryKey: ['/api/itinerary-days', 'all-items', sortedDays.map(d => d.id).join(',')],
+    queryFn: async () => {
+      // Create a map to store items by day ID
+      const itemsByDay: Record<number, ItineraryItem[]> = {};
+      
+      // Fetch items for each day in parallel
+      await Promise.all(sortedDays.map(async (day) => {
+        try {
+          const response = await fetch(`/api/itinerary-days/${day.id}/items`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch items for day ${day.dayNumber}`);
+          }
+          const items = await response.json();
+          itemsByDay[day.id] = items;
+        } catch (error) {
+          console.error(`Error fetching items for day ${day.id}:`, error);
+          itemsByDay[day.id] = [];
         }
-        return response.json();
-      },
-      enabled: !!day.id
-    });
+      }));
+      
+      // Update state with all fetched items
+      setDayItems(itemsByDay);
+      return itemsByDay;
+    },
+    enabled: sortedDays.length > 0,
   });
 
   // Loading state
@@ -620,12 +686,11 @@ export default function ItineraryDetails() {
           {sortedDays.length > 0 && (
             <div className="space-y-8">
               {sortedDays.map((day, index) => {
-                const dayItemsQuery = dayItemsQueries[index];
                 const dayDate = new Date(day.date);
-                const dayItems = dayItemsQuery.data || [];
+                const items = dayItems[day.id] || [];
                 
                 // Sort items by start time
-                const sortedItems = [...dayItems].sort((a, b) => {
+                const sortedItems = [...items].sort((a, b) => {
                   if (!a.startTime) return 1;
                   if (!b.startTime) return -1;
                   return a.startTime > b.startTime ? 1 : -1;
@@ -660,13 +725,9 @@ export default function ItineraryDetails() {
                     </CardHeader>
                     
                     <CardContent className="pt-4">
-                      {dayItemsQuery.isLoading ? (
+                      {itemsLoading ? (
                         <div className="py-4 flex justify-center">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                        </div>
-                      ) : dayItemsQuery.error ? (
-                        <div className="py-4 text-center text-red-500">
-                          Error loading items
                         </div>
                       ) : sortedItems.length === 0 ? (
                         <div className="py-8 text-center text-muted-foreground">
