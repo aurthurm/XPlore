@@ -5,7 +5,6 @@ import { Business } from "@/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 // Layout components
-import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 
 // Page components
@@ -79,8 +78,6 @@ const Home = () => {
 
   return (
     <>
-      <Header />
-      
       <HeroSection />
       
       <CategoryNavigation />
