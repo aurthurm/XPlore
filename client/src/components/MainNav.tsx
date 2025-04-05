@@ -30,8 +30,11 @@ export default function MainNav() {
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
         <div className="mr-4 flex items-center">
-          <Link href="/" className="font-bold text-xl">
-            ZimTravel
+          <Link href="/" className="flex items-center space-x-2">
+            <span className="text-primary text-2xl">
+              <i className="fas fa-map-marked-alt"></i>
+            </span>
+            <span className="font-bold text-lg md:text-xl">ZimExplore</span>
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
@@ -49,8 +52,11 @@ export default function MainNav() {
             </SheetTrigger>
             <SheetContent side="left" className="pr-0">
               <div className="px-7">
-                <Link href="/" className="flex items-center">
-                  <span className="font-bold text-xl">ZimTravel</span>
+                <Link href="/" className="flex items-center space-x-2">
+                  <span className="text-primary text-2xl">
+                    <i className="fas fa-map-marked-alt"></i>
+                  </span>
+                  <span className="font-bold text-xl">ZimExplore</span>
                 </Link>
               </div>
               <nav className="flex flex-col gap-4 mt-8">
@@ -106,9 +112,17 @@ export default function MainNav() {
                       </Button>
                     </div>
                   ) : (
-                    <Button asChild size="sm" className="w-full">
-                      <Link href="/auth">Log in</Link>
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="outline" asChild size="sm" className="w-full">
+                        <Link href="/dashboard">
+                          <i className="fas fa-user-tie mr-1"></i>
+                          Business Registration
+                        </Link>
+                      </Button>
+                      <Button asChild size="sm" className="w-full">
+                        <Link href="/auth">Log in</Link>
+                      </Button>
+                    </div>
                   )}
                 </div>
               </nav>
@@ -198,9 +212,17 @@ export default function MainNav() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button asChild size="sm">
-                <Link href="/auth">Log in</Link>
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" asChild size="sm">
+                  <Link href="/dashboard">
+                    <i className="fas fa-user-tie mr-1"></i>
+                    Business Registration
+                  </Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/auth">Log in</Link>
+                </Button>
+              </div>
             )}
           </div>
         </div>
