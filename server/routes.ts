@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth } from "./auth";
 import { 
   insertUserSchema, 
   insertBusinessSchema, 
@@ -25,6 +26,9 @@ function handleValidationError(error: ZodError, res: Response) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  setupAuth(app);
+  
   // API Routes
   const apiRouter = app.route('/api');
   
@@ -956,6 +960,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mock Google Places API for seeding data
   app.get('/api/seed-data', async (_req, res) => {
     try {
+      // Create a test user if needed
+      const existingTestUser = await storage.getUserByEmail("test@example.com");
+      if (!existingTestUser) {
+        await storage.createUser({
+          username: "testuser",
+          email: "test@example.com",
+          password: "password", // In a real app, this would be hashed
+          fullName: "Test User",
+          isBusiness: false
+        });
+      }
+      
       // Sample data for initial load
       const sampleBusinesses = [
         {
@@ -1029,6 +1045,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingBusinesses.length === 0) {
         for (const business of sampleBusinesses) {
           await storage.createBusiness(business);
+        }
+      }
+      
+      // Add sample itineraries for test user
+      const testUserForItineraries = await storage.getUserByEmail("test@example.com");
+      if (testUserForItineraries) {
+        const userItineraries = await storage.getItineraries(testUserForItineraries.id);
+        
+        if (userItineraries.length === 0) {
+          // Create sample itinerary
+          const sampleItinerary = await storage.createItinerary({
+            title: "Zimbabwe Adventure",
+            description: "Exploring the natural wonders of Zimbabwe",
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            userId: testUserForItineraries.id,
+            isPublic: true,
+            coverImage: "https://images.unsplash.com/photo-1516026672322-bc52d61a55d5"
+          });
+          
+          // Create sample itinerary days
+          const day1 = await storage.createItineraryDay({
+            itineraryId: sampleItinerary.id,
+            date: new Date().toISOString().split('T')[0],
+            title: "Victoria Falls Exploration",
+            notes: "Visiting the majestic Victoria Falls"
+          });
+          
+          const day2 = await storage.createItineraryDay({
+            itineraryId: sampleItinerary.id,
+            date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            title: "Great Zimbabwe Ruins",
+            notes: "Exploring the ancient ruins"
+          });
+          
+          // Add itinerary items
+          await storage.createItineraryItem({
+            dayId: day1.id,
+            businessId: 1, // Victoria Falls Hotel
+            startTime: "09:00",
+            endTime: "12:00",
+            notes: "Tour of the falls with a local guide",
+            type: "attraction"
+          });
+          
+          await storage.createItineraryItem({
+            dayId: day1.id,
+            businessId: 1, // Victoria Falls Hotel
+            startTime: "13:00",
+            endTime: "15:00",
+            notes: "Lunch at the hotel restaurant",
+            type: "dining"
+          });
+          
+          await storage.createItineraryItem({
+            dayId: day2.id,
+            businessId: 2, // Great Zimbabwe Ruins
+            startTime: "10:00",
+            endTime: "14:00",
+            notes: "Guided tour of the ancient city",
+            type: "attraction"
+          });
         }
       }
       

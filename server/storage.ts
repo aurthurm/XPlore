@@ -10,10 +10,19 @@ import {
   type ItineraryItem, type InsertItineraryItem,
   type ItineraryCollaborator, type InsertItineraryCollaborator,
   type TransportBooking, type InsertTransportBooking,
-  type SearchFilter
+  type SearchFilter,
+  Json
 } from "@shared/schema";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { pool, db } from "./db";
+import { eq, and, like, or, desc, asc, sql } from "drizzle-orm";
 
 export interface IStorage {
+  // Session storage
+  sessionStore: session.Store;
+  
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -77,6 +86,7 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
+  public sessionStore: session.Store;
   private users: Map<number, User>;
   private categories: Map<number, Category>;
   private businesses: Map<number, Business>;
@@ -115,6 +125,12 @@ export class MemStorage implements IStorage {
     this.itineraryDayId = 1;
     this.itineraryItemId = 1;
     this.transportBookingId = 1;
+    
+    // Initialize session store
+    const MemoryStore = createMemoryStore(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
     
     // Initialize with default categories
     this.initializeCategories();
@@ -660,4 +676,563 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  public sessionStore: session.Store;
+  
+  constructor() {
+    const PostgresSessionStore = connectPg(session);
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
+    });
+  }
+  
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+  
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+  
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+  
+  async getCategories(): Promise<Category[]> {
+    return db.select().from(categories);
+  }
+  
+  async getCategoryById(id: number): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category || undefined;
+  }
+  
+  async createCategory(insertCategory: InsertCategory): Promise<Category> {
+    const [category] = await db
+      .insert(categories)
+      .values(insertCategory)
+      .returning();
+    return category;
+  }
+  
+  async getBusinesses(filter?: SearchFilter): Promise<Business[]> {
+    let query = db.select().from(businesses);
+    
+    if (filter) {
+      if (filter.categoryId) {
+        query = query.where(eq(businesses.categoryId, filter.categoryId));
+      }
+      
+      // Add more filters as needed
+      // Note: Complex filters like nearMe would require more advanced SQL
+    }
+    
+    return query;
+  }
+  
+  async getBusinessById(id: number): Promise<Business | undefined> {
+    const [business] = await db.select().from(businesses).where(eq(businesses.id, id));
+    return business || undefined;
+  }
+  
+  async getBusinessByGooglePlaceId(placeId: string): Promise<Business | undefined> {
+    const [business] = await db
+      .select()
+      .from(businesses)
+      .where(eq(businesses.googlePlaceId, placeId));
+    return business || undefined;
+  }
+  
+  async createBusiness(insertBusiness: InsertBusiness): Promise<Business> {
+    const [business] = await db
+      .insert(businesses)
+      .values(insertBusiness)
+      .returning();
+    return business;
+  }
+  
+  async updateBusiness(id: number, partialBusiness: Partial<InsertBusiness>): Promise<Business | undefined> {
+    const [business] = await db
+      .update(businesses)
+      .set(partialBusiness)
+      .where(eq(businesses.id, id))
+      .returning();
+    return business || undefined;
+  }
+  
+  async getBusinessesByOwnerId(ownerId: number): Promise<Business[]> {
+    return db
+      .select()
+      .from(businesses)
+      .where(eq(businesses.ownerId, ownerId));
+  }
+  
+  async createClaimRequest(insertClaimRequest: InsertClaimRequest): Promise<ClaimRequest> {
+    const [claimRequest] = await db
+      .insert(claimRequests)
+      .values(insertClaimRequest)
+      .returning();
+    return claimRequest;
+  }
+  
+  async getClaimRequestById(id: number): Promise<ClaimRequest | undefined> {
+    const [claimRequest] = await db
+      .select()
+      .from(claimRequests)
+      .where(eq(claimRequests.id, id));
+    return claimRequest || undefined;
+  }
+  
+  async getClaimRequestsByBusinessId(businessId: number): Promise<ClaimRequest[]> {
+    return db
+      .select()
+      .from(claimRequests)
+      .where(eq(claimRequests.businessId, businessId));
+  }
+  
+  async getClaimRequestsByUserId(userId: number): Promise<ClaimRequest[]> {
+    return db
+      .select()
+      .from(claimRequests)
+      .where(eq(claimRequests.userId, userId));
+  }
+  
+  async updateClaimRequest(id: number, status: string): Promise<ClaimRequest | undefined> {
+    const [claimRequest] = await db
+      .update(claimRequests)
+      .set({ status })
+      .where(eq(claimRequests.id, id))
+      .returning();
+    return claimRequest || undefined;
+  }
+  
+  async getItineraries(userId: number): Promise<Itinerary[]> {
+    return db
+      .select()
+      .from(itineraries)
+      .where(eq(itineraries.userId, userId));
+  }
+  
+  async getItineraryById(id: number): Promise<Itinerary | undefined> {
+    const [itinerary] = await db
+      .select()
+      .from(itineraries)
+      .where(eq(itineraries.id, id));
+    return itinerary || undefined;
+  }
+  
+  async createItinerary(insertItinerary: InsertItinerary): Promise<Itinerary> {
+    const timestamp = new Date();
+    const [itinerary] = await db
+      .insert(itineraries)
+      .values({
+        ...insertItinerary,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      })
+      .returning();
+    return itinerary;
+  }
+  
+  async updateItinerary(id: number, partialItinerary: Partial<InsertItinerary>): Promise<Itinerary | undefined> {
+    const [itinerary] = await db
+      .update(itineraries)
+      .set({
+        ...partialItinerary,
+        updatedAt: new Date()
+      })
+      .where(eq(itineraries.id, id))
+      .returning();
+    return itinerary || undefined;
+  }
+  
+  async deleteItinerary(id: number): Promise<boolean> {
+    try {
+      // Delete related entities first (due to foreign key constraints)
+      // Note: In a real application, you would use transactions here
+      
+      // Get all days for this itinerary
+      const itineraryDaysList = await db
+        .select()
+        .from(itineraryDays)
+        .where(eq(itineraryDays.itineraryId, id));
+      
+      // Delete items for each day
+      for (const day of itineraryDaysList) {
+        await db
+          .delete(itineraryItems)
+          .where(eq(itineraryItems.dayId, day.id));
+      }
+      
+      // Delete all days
+      await db
+        .delete(itineraryDays)
+        .where(eq(itineraryDays.itineraryId, id));
+      
+      // Delete collaborators
+      await db
+        .delete(itineraryCollaborators)
+        .where(eq(itineraryCollaborators.itineraryId, id));
+      
+      // Delete the itinerary itself
+      const result = await db
+        .delete(itineraries)
+        .where(eq(itineraries.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting itinerary:', error);
+      return false;
+    }
+  }
+  
+  async getItineraryDays(itineraryId: number): Promise<ItineraryDay[]> {
+    const days = await db
+      .select()
+      .from(itineraryDays)
+      .where(eq(itineraryDays.itineraryId, itineraryId))
+      .orderBy(itineraryDays.dayNumber);
+    
+    return days;
+  }
+  
+  async getItineraryDayById(id: number): Promise<ItineraryDay | undefined> {
+    const [day] = await db
+      .select()
+      .from(itineraryDays)
+      .where(eq(itineraryDays.id, id));
+    return day || undefined;
+  }
+  
+  async createItineraryDay(insertDay: InsertItineraryDay): Promise<ItineraryDay> {
+    const [day] = await db
+      .insert(itineraryDays)
+      .values(insertDay)
+      .returning();
+    
+    // Update the parent itinerary's updatedAt
+    await db
+      .update(itineraries)
+      .set({ updatedAt: new Date() })
+      .where(eq(itineraries.id, insertDay.itineraryId));
+    
+    return day;
+  }
+  
+  async updateItineraryDay(id: number, partialDay: Partial<InsertItineraryDay>): Promise<ItineraryDay | undefined> {
+    const [existingDay] = await db
+      .select()
+      .from(itineraryDays)
+      .where(eq(itineraryDays.id, id));
+    
+    if (!existingDay) return undefined;
+    
+    const [day] = await db
+      .update(itineraryDays)
+      .set(partialDay)
+      .where(eq(itineraryDays.id, id))
+      .returning();
+    
+    // Update the parent itinerary's updatedAt
+    await db
+      .update(itineraries)
+      .set({ updatedAt: new Date() })
+      .where(eq(itineraries.id, existingDay.itineraryId));
+    
+    return day || undefined;
+  }
+  
+  async deleteItineraryDay(id: number): Promise<boolean> {
+    try {
+      // First get the day to find its itinerary
+      const [day] = await db
+        .select()
+        .from(itineraryDays)
+        .where(eq(itineraryDays.id, id));
+      
+      if (!day) return false;
+      
+      // Delete all items in this day
+      await db
+        .delete(itineraryItems)
+        .where(eq(itineraryItems.dayId, id));
+      
+      // Delete the day itself
+      await db
+        .delete(itineraryDays)
+        .where(eq(itineraryDays.id, id));
+      
+      // Update the parent itinerary's updatedAt
+      await db
+        .update(itineraries)
+        .set({ updatedAt: new Date() })
+        .where(eq(itineraries.id, day.itineraryId));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting itinerary day:', error);
+      return false;
+    }
+  }
+  
+  async getItineraryItems(dayId: number): Promise<ItineraryItem[]> {
+    const items = await db
+      .select()
+      .from(itineraryItems)
+      .where(eq(itineraryItems.dayId, dayId))
+      .orderBy(itineraryItems.startTime);
+    
+    return items;
+  }
+  
+  async getItineraryItemById(id: number): Promise<ItineraryItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(itineraryItems)
+      .where(eq(itineraryItems.id, id));
+    return item || undefined;
+  }
+  
+  async createItineraryItem(insertItem: InsertItineraryItem): Promise<ItineraryItem> {
+    const [item] = await db
+      .insert(itineraryItems)
+      .values(insertItem)
+      .returning();
+    
+    // Get the day to update the parent itinerary's updatedAt
+    const [day] = await db
+      .select()
+      .from(itineraryDays)
+      .where(eq(itineraryDays.id, insertItem.dayId));
+    
+    if (day) {
+      await db
+        .update(itineraries)
+        .set({ updatedAt: new Date() })
+        .where(eq(itineraries.id, day.itineraryId));
+    }
+    
+    return item;
+  }
+  
+  async updateItineraryItem(id: number, partialItem: Partial<InsertItineraryItem>): Promise<ItineraryItem | undefined> {
+    // Get existing item to find its day
+    const [existingItem] = await db
+      .select()
+      .from(itineraryItems)
+      .where(eq(itineraryItems.id, id));
+    
+    if (!existingItem) return undefined;
+    
+    const [item] = await db
+      .update(itineraryItems)
+      .set(partialItem)
+      .where(eq(itineraryItems.id, id))
+      .returning();
+    
+    // Get the day to update the parent itinerary's updatedAt
+    const [day] = await db
+      .select()
+      .from(itineraryDays)
+      .where(eq(itineraryDays.id, existingItem.dayId));
+    
+    if (day) {
+      await db
+        .update(itineraries)
+        .set({ updatedAt: new Date() })
+        .where(eq(itineraries.id, day.itineraryId));
+    }
+    
+    return item || undefined;
+  }
+  
+  async deleteItineraryItem(id: number): Promise<boolean> {
+    try {
+      // First get the item to find its day
+      const [item] = await db
+        .select()
+        .from(itineraryItems)
+        .where(eq(itineraryItems.id, id));
+      
+      if (!item) return false;
+      
+      // Delete the item
+      await db
+        .delete(itineraryItems)
+        .where(eq(itineraryItems.id, id));
+      
+      // Get the day to update the parent itinerary's updatedAt
+      const [day] = await db
+        .select()
+        .from(itineraryDays)
+        .where(eq(itineraryDays.id, item.dayId));
+      
+      if (day) {
+        await db
+          .update(itineraries)
+          .set({ updatedAt: new Date() })
+          .where(eq(itineraries.id, day.itineraryId));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting itinerary item:', error);
+      return false;
+    }
+  }
+  
+  async getItineraryCollaborators(itineraryId: number): Promise<ItineraryCollaborator[]> {
+    return db
+      .select()
+      .from(itineraryCollaborators)
+      .where(eq(itineraryCollaborators.itineraryId, itineraryId));
+  }
+  
+  async addItineraryCollaborator(insertCollaborator: InsertItineraryCollaborator): Promise<ItineraryCollaborator> {
+    const values = {
+      ...insertCollaborator,
+      inviteStatus: insertCollaborator.inviteStatus || 'pending',
+      accessLevel: insertCollaborator.accessLevel || 'view'
+    };
+    
+    const [collaborator] = await db
+      .insert(itineraryCollaborators)
+      .values(values)
+      .returning();
+    
+    // Update the parent itinerary's updatedAt
+    await db
+      .update(itineraries)
+      .set({ updatedAt: new Date() })
+      .where(eq(itineraries.id, insertCollaborator.itineraryId));
+    
+    return collaborator;
+  }
+  
+  async updateItineraryCollaborator(
+    itineraryId: number,
+    email: string,
+    data: Partial<InsertItineraryCollaborator>
+  ): Promise<ItineraryCollaborator | undefined> {
+    const [collaborator] = await db
+      .update(itineraryCollaborators)
+      .set(data)
+      .where(
+        and(
+          eq(itineraryCollaborators.itineraryId, itineraryId),
+          eq(itineraryCollaborators.email, email)
+        )
+      )
+      .returning();
+    
+    // Update the parent itinerary's updatedAt
+    await db
+      .update(itineraries)
+      .set({ updatedAt: new Date() })
+      .where(eq(itineraries.id, itineraryId));
+    
+    return collaborator || undefined;
+  }
+  
+  async removeItineraryCollaborator(itineraryId: number, email: string): Promise<boolean> {
+    try {
+      await db
+        .delete(itineraryCollaborators)
+        .where(
+          and(
+            eq(itineraryCollaborators.itineraryId, itineraryId),
+            eq(itineraryCollaborators.email, email)
+          )
+        );
+      
+      // Update the parent itinerary's updatedAt
+      await db
+        .update(itineraries)
+        .set({ updatedAt: new Date() })
+        .where(eq(itineraries.id, itineraryId));
+      
+      return true;
+    } catch (error) {
+      console.error('Error removing itinerary collaborator:', error);
+      return false;
+    }
+  }
+  
+  async getTransportBookings(userId: number): Promise<TransportBooking[]> {
+    return db
+      .select()
+      .from(transportBookings)
+      .where(eq(transportBookings.userId, userId));
+  }
+  
+  async getTransportBookingsByItinerary(itineraryId: number): Promise<TransportBooking[]> {
+    return db
+      .select()
+      .from(transportBookings)
+      .where(eq(transportBookings.itineraryId, itineraryId));
+  }
+  
+  async getTransportBookingById(id: number): Promise<TransportBooking | undefined> {
+    const [booking] = await db
+      .select()
+      .from(transportBookings)
+      .where(eq(transportBookings.id, id));
+    return booking || undefined;
+  }
+  
+  async createTransportBooking(insertBooking: InsertTransportBooking): Promise<TransportBooking> {
+    const timestamp = new Date();
+    const [booking] = await db
+      .insert(transportBookings)
+      .values({
+        ...insertBooking,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      })
+      .returning();
+    return booking;
+  }
+  
+  async updateTransportBooking(id: number, partialBooking: Partial<InsertTransportBooking>): Promise<TransportBooking | undefined> {
+    const [booking] = await db
+      .update(transportBookings)
+      .set({
+        ...partialBooking,
+        updatedAt: new Date()
+      })
+      .where(eq(transportBookings.id, id))
+      .returning();
+    return booking || undefined;
+  }
+  
+  async deleteTransportBooking(id: number): Promise<boolean> {
+    try {
+      await db
+        .delete(transportBookings)
+        .where(eq(transportBookings.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting transport booking:', error);
+      return false;
+    }
+  }
+}
+
+// Import drizzle operators 
+import { eq, and } from "drizzle-orm";
+import { db } from "./db";
+
+// Use the DatabaseStorage implementation
+export const storage = new DatabaseStorage();

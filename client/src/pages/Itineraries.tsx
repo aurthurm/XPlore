@@ -28,17 +28,14 @@ const formSchema = z.object({
   }),
   endDate: z.string().refine(val => !isNaN(Date.parse(val)), {
     message: "Please enter a valid date",
-  }).refine((endDate, data) => {
-    return new Date(endDate) >= new Date((data as any).startDate);
-  }, {
-    message: "End date must be after start date",
   }),
   isPublic: z.boolean().default(false),
   coverImage: z.string().optional(),
 });
 
-// Temporary userId until authentication is implemented
-const TEMP_USER_ID = 1;
+// Test user ID used for demonstration purposes
+// In a production app, this would come from authentication
+const TEST_USER_ID = 1;
 
 export default function Itineraries() {
   const { toast } = useToast();
@@ -46,9 +43,9 @@ export default function Itineraries() {
   
   // Query itineraries
   const { data: itineraries, isLoading, error } = useQuery<Itinerary[]>({
-    queryKey: ['/api/itineraries/user', TEMP_USER_ID],
+    queryKey: ['/api/itineraries/user', TEST_USER_ID],
     queryFn: async () => {
-      const response = await fetch(`/api/itineraries/user/${TEMP_USER_ID}`);
+      const response = await fetch(`/api/itineraries/user/${TEST_USER_ID}`);
       if (!response.ok) {
         throw new Error('Failed to fetch itineraries');
       }
@@ -66,7 +63,7 @@ export default function Itineraries() {
         },
         body: JSON.stringify({
           ...data,
-          userId: TEMP_USER_ID,
+          userId: TEST_USER_ID,
         }),
       });
       
@@ -78,7 +75,7 @@ export default function Itineraries() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/itineraries/user', TEMP_USER_ID] });
+      queryClient.invalidateQueries({ queryKey: ['/api/itineraries/user', TEST_USER_ID] });
       toast({
         title: "Itinerary created",
         description: "Your new itinerary has been created successfully.",
@@ -109,7 +106,7 @@ export default function Itineraries() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/itineraries/user', TEMP_USER_ID] });
+      queryClient.invalidateQueries({ queryKey: ['/api/itineraries/user', TEST_USER_ID] });
       toast({
         title: "Itinerary deleted",
         description: "The itinerary has been deleted successfully.",
