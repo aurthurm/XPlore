@@ -917,12 +917,14 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
                   return;
                 }
                 
+                // Send only the time part (HH:MM:SS), not the full ISO date string
+                // This is what the PostgreSQL time field expects
                 const formattedStartTime = itemStartTime ? 
-                  new Date(`1970-01-01T${itemStartTime}:00`).toISOString() : 
+                  itemStartTime + ":00" : 
                   undefined;
                 
                 const formattedEndTime = itemEndTime ? 
-                  new Date(`1970-01-01T${itemEndTime}:00`).toISOString() : 
+                  itemEndTime + ":00" : 
                   undefined;
                 
                 createItemMutation.mutate({
@@ -1045,10 +1047,13 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
                               <div className="space-y-3">
                                 {(dayItems[day.id] || [])
                                   .sort((a, b) => {
+                                    // Sort by start time if available
                                     if (!a.startTime && !b.startTime) return 0;
                                     if (!a.startTime) return 1;
                                     if (!b.startTime) return -1;
-                                    return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+                                    
+                                    // Compare directly as strings since format is HH:MM:SS
+                                    return a.startTime.localeCompare(b.startTime);
                                   })
                                   .map((item) => (
                                     <div key={item.id} className="p-3 border rounded-md bg-muted/30">
@@ -1069,8 +1074,16 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
                                               {item.startTime && (
                                                 <div className="flex items-center text-xs text-muted-foreground">
                                                   <Clock className="h-3 w-3 mr-1" />
-                                                  {format(new Date(item.startTime), 'h:mm a')}
-                                                  {item.endTime && ` - ${format(new Date(item.endTime), 'h:mm a')}`}
+                                                  {/* Format time without having to parse to Date - just extract HH:MM from the time string */}
+                                                  {item.startTime.substring(0, 5).split(':').map((n, i) => 
+                                                    i === 0 ? String(parseInt(n) % 12 || 12) : n
+                                                  ).join(':') + (parseInt(item.startTime.split(':')[0]) >= 12 ? ' PM' : ' AM')}
+                                                  
+                                                  {item.endTime && ` - ${
+                                                    item.endTime.substring(0, 5).split(':').map((n, i) => 
+                                                      i === 0 ? String(parseInt(n) % 12 || 12) : n
+                                                    ).join(':') + (parseInt(item.endTime.split(':')[0]) >= 12 ? ' PM' : ' AM')
+                                                  }`}
                                                 </div>
                                               )}
                                               {item.location && (
