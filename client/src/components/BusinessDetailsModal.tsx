@@ -23,6 +23,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { getPriceLevelSymbol } from '@/lib/utils';
+import DestinationCard from '@/components/DestinationCard';
 
 type BusinessDetailsModalProps = {
   isOpen: boolean;
@@ -252,34 +253,12 @@ export default function BusinessDetailsModal({
               <TabsContent value="related" className="mt-4">
                 <h3 className="text-lg font-medium mb-2">Similar {getCategoryName(business.categoryId)} Options</h3>
                 {relatedBusinesses.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 ">
                     {relatedBusinesses.map(related => (
-                      <Card key={related.id} className="overflow-hidden">
-                        <div className="h-36 overflow-hidden">
-                          <img 
-                            src={getBusinessImage(related)}
-                            alt={related.name} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <CardHeader className="pb-2 pt-3">
-                          <CardTitle className="text-base">{related.name}</CardTitle>
-                          <CardDescription className="flex items-center gap-1 text-xs">
-                            {related.rating && (
-                              <div className="flex items-center text-yellow-500">
-                                <Star className="w-3 h-3 fill-current" />
-                                <span className="ml-1 text-xs text-slate-600">{related.rating.toFixed(1)}</span>
-                              </div>
-                            )}
-                            {related.priceLevel && (
-                              <div className="text-slate-600 text-xs ml-1">
-                                {getPriceLevelSymbol(related.priceLevel)}
-                              </div>
-                            )}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardFooter className="pt-1">
-                          <Button variant="ghost" size="sm" className="w-full" onClick={() => {
+                      <div key={related.id} className="scale-90 origin-top-left"> 
+                        <DestinationCard 
+                          business={related}
+                          onClick={() => {
                             // Close current modal and open new one with this business
                             onClose();
                             setTimeout(() => {
@@ -288,11 +267,9 @@ export default function BusinessDetailsModal({
                                 detail: { businessId: related.id } 
                               }));
                             }, 100);
-                          }}>
-                            View Details
-                          </Button>
-                        </CardFooter>
-                      </Card>
+                          }}
+                        />
+                      </div>
                     ))}
                   </div>
                 ) : (
@@ -303,39 +280,12 @@ export default function BusinessDetailsModal({
               <TabsContent value="recommendations" className="mt-4">
                 <h3 className="text-lg font-medium mb-2">Recommended for You</h3>
                 {recommendations.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {recommendations.map(recommendation => (
-                      <Card key={recommendation.id} className="overflow-hidden">
-                        <div className="h-36 overflow-hidden">
-                          <img 
-                            src={getBusinessImage(recommendation)}
-                            alt={recommendation.name} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <CardHeader className="pb-2 pt-3">
-                          <CardTitle className="text-base flex items-center">
-                            {recommendation.name}
-                            <Badge variant="outline" className="ml-2 text-xs">
-                              {getCategoryName(recommendation.categoryId)}
-                            </Badge>
-                          </CardTitle>
-                          <CardDescription className="flex items-center gap-1 text-xs">
-                            {recommendation.rating && (
-                              <div className="flex items-center text-yellow-500">
-                                <Star className="w-3 h-3 fill-current" />
-                                <span className="ml-1 text-xs text-slate-600">{recommendation.rating.toFixed(1)}</span>
-                              </div>
-                            )}
-                            {recommendation.priceLevel && (
-                              <div className="text-slate-600 text-xs ml-1">
-                                {getPriceLevelSymbol(recommendation.priceLevel)}
-                              </div>
-                            )}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardFooter className="pt-1">
-                          <Button variant="ghost" size="sm" className="w-full" onClick={() => {
+                      <div key={recommendation.id} className="scale-90 origin-top-left">
+                        <DestinationCard 
+                          business={recommendation}
+                          onClick={() => {
                             // Close current modal and open new one with this business
                             onClose();
                             setTimeout(() => {
@@ -344,11 +294,9 @@ export default function BusinessDetailsModal({
                                 detail: { businessId: recommendation.id } 
                               }));
                             }, 100);
-                          }}>
-                            View Details
-                          </Button>
-                        </CardFooter>
-                      </Card>
+                          }}
+                        />
+                      </div>
                     ))}
                   </div>
                 ) : (
