@@ -1,190 +1,261 @@
 import { useEffect, useRef, useState } from "react";
 import { Business } from "@/types";
 import { Button } from "@/components/ui/button";
+import { loadGoogleMapsScript } from "@/lib/utils";
 
 interface MapViewProps {
   businesses: Business[];
-  selectedBusinessId?: number;
-  onSelectBusiness?: (businessId: number) => void;
+  selectedBusiness?: Business | null;
+  setSelectedBusiness?: (business: Business | null) => void;
 }
 
-const MapView = ({ businesses, selectedBusinessId, onSelectBusiness }: MapViewProps) => {
+interface MarkerInfo {
+  marker: google.maps.Marker;
+  infoWindow: google.maps.InfoWindow;
+  businessId: number;
+}
+
+const MapView = ({ 
+  businesses, 
+  selectedBusiness, 
+  setSelectedBusiness 
+}: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  const markersRef = useRef<MarkerInfo[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isMapReady, setIsMapReady] = useState(false);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState(false);
 
-  // Function to safely clean up markers
-  const cleanupMarkers = () => {
-    if (!window.google || !google.maps) return;
-
-    const currentMarkers = markersRef.current;
-    
-    if (currentMarkers.length) {
-      // Clear all markers from the map
-      currentMarkers.forEach(marker => {
-        try {
-          // Remove listeners first
-          google.maps.event.clearInstanceListeners(marker);
-          // Then remove from map
+  // Clean up markers when component unmounts or businesses change
+  const clearMarkers = () => {
+    if (markersRef.current.length > 0) {
+      markersRef.current.forEach(({ marker, infoWindow }) => {
+        if (marker) {
+          if (typeof google !== 'undefined' && google.maps) {
+            google.maps.event.clearInstanceListeners(marker);
+          }
           marker.setMap(null);
-        } catch (e) {
-          console.error("Error clearing marker:", e);
         }
       });
-      
-      // Reset markers array
       markersRef.current = [];
     }
   };
 
-  // Initialize map only once
+  // Initialize the map
   useEffect(() => {
-    // Skip if div not ready or map already initialized
     if (!mapRef.current || mapInstanceRef.current) return;
-    
-    const initMap = () => {
-      if (!window.google || !window.google.maps) {
-        console.log("Google Maps API not loaded yet");
-        return;
-      }
-      
-      try {
-        // Get Zimbabwe center coordinates
-        const zimbabweCenter = { lat: -19.0154, lng: 29.1549 };
 
-        const mapInstance = new google.maps.Map(mapRef.current!, {
-          center: zimbabweCenter,
+    const initializeMap = async () => {
+      try {
+        // Load Google Maps script
+        await loadGoogleMapsScript();
+        
+        if (typeof google === 'undefined' || !google.maps) {
+          console.error("Google Maps API not loaded");
+          setMapError(true);
+          return;
+        }
+
+        // Create map instance
+        const mapOptions = {
+          center: { lat: -19.0154, lng: 29.1549 }, // Zimbabwe center
           zoom: 7,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
-        });
+        };
 
-        mapInstanceRef.current = mapInstance;
-        setIsMapReady(true);
+        if (mapRef.current) {
+          const map = new google.maps.Map(mapRef.current, mapOptions);
+          mapInstanceRef.current = map;
+          setIsMapLoaded(true);
+        }
       } catch (error) {
         console.error("Error initializing map:", error);
+        setMapError(true);
       }
     };
 
-    // Check if Google Maps is already loaded
-    if (window.google && window.google.maps) {
-      initMap();
-    } else {
-      console.log("Google Maps not available");
-    }
+    initializeMap();
 
-    // Cleanup when component unmounts
+    // Cleanup on unmount
     return () => {
-      try {
-        cleanupMarkers();
-        mapInstanceRef.current = null;
-        setIsMapReady(false);
-      } catch (e) {
-        console.error("Error in map cleanup:", e);
-      }
+      clearMarkers();
+      mapInstanceRef.current = null;
     };
-  }, []); // Empty dependency array as we only want to run this once
+  }, []);
 
-  // Update markers when businesses change or map becomes ready
+  // Update markers when businesses change
   useEffect(() => {
     const map = mapInstanceRef.current;
-    
-    if (!map || !isMapReady || !businesses.length || !window.google || !google.maps) {
-      return;
-    }
-    
+    if (!map || !isMapLoaded || businesses.length === 0 || typeof google === 'undefined') return;
+
     try {
-      // Clean up existing markers first
-      cleanupMarkers();
+      // Clear existing markers
+      clearMarkers();
+      
+      // Create bounds to fit all markers
+      const bounds = new google.maps.LatLngBounds();
       
       // Create new markers
-      const newMarkers = businesses.map(business => {
-        // Create marker
+      const newMarkers: MarkerInfo[] = [];
+      
+      businesses.forEach(business => {
+        if (!business.latitude || !business.longitude) return;
+        
+        const position = { lat: business.latitude, lng: business.longitude };
+        bounds.extend(position);
+        
+        // Create the marker
         const marker = new google.maps.Marker({
-          position: { lat: business.latitude, lng: business.longitude },
+          position,
           map,
           title: business.name,
-          animation: selectedBusinessId === business.id ? google.maps.Animation.BOUNCE : undefined,
+          animation: selectedBusiness?.id === business.id 
+            ? google.maps.Animation.BOUNCE 
+            : undefined
         });
         
-        // Create info window
+        // Create info window with business info
+        const infoContent = `
+          <div class="p-3">
+            <h3 class="font-medium text-base">${business.name}</h3>
+            ${business.address ? `<p class="text-sm mt-1">${business.address}</p>` : ''}
+            ${business.rating ? `
+              <div class="flex items-center mt-2">
+                <span class="text-amber-500 mr-1">★</span>
+                <span class="text-sm">${business.rating}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+        
         const infoWindow = new google.maps.InfoWindow({
-          content: `
-            <div class="p-2">
-              <h3 class="font-medium">${business.name}</h3>
-              <p class="text-sm">${business.address || ''}</p>
-              ${business.rating ? `
-                <div class="flex items-center mt-1">
-                  <span class="text-amber-500 mr-1">
-                    <i class="fas fa-star text-xs"></i>
-                  </span>
-                  <span class="text-sm">${business.rating}</span>
-                </div>
-              ` : ''}
-            </div>
-          `,
+          content: infoContent
         });
         
         // Add click listener
         marker.addListener('click', () => {
-          infoWindow.open(map, marker);
-          if (onSelectBusiness) onSelectBusiness(business.id);
+          // Close any open info windows
+          newMarkers.forEach(m => {
+            try {
+              m.infoWindow.close();
+            } catch (e) {
+              console.error("Error closing info window:", e);
+            }
+          });
+          
+          // Open this info window
+          infoWindow.open({
+            map,
+            anchor: marker
+          });
+          
+          // Update selected business
+          if (setSelectedBusiness) {
+            setSelectedBusiness(business);
+          }
         });
         
-        return marker;
+        newMarkers.push({ marker, infoWindow, businessId: business.id });
       });
       
-      // Save new markers to ref
+      // Store markers reference
       markersRef.current = newMarkers;
       
-      // Auto-center map to fit all markers
+      // Fit bounds if we have markers
       if (newMarkers.length > 0) {
-        const bounds = new google.maps.LatLngBounds();
-        newMarkers.forEach(marker => {
-          bounds.extend(marker.getPosition()!);
-        });
         map.fitBounds(bounds);
         
-        // Zoom out slightly to give some context
-        const listener = google.maps.event.addListener(map, 'idle', () => {
-          if (map.getZoom()! > 15) map.setZoom(15);
-          google.maps.event.removeListener(listener);
+        // Add a slight zoom-out for better context
+        google.maps.event.addListener(map, 'idle', function() {
+          const currentZoom = map.getZoom();
+          if (currentZoom !== undefined && currentZoom > 15) {
+            map.setZoom(15);
+          }
         });
       }
     } catch (error) {
-      console.error("Error updating markers:", error);
+      console.error("Error adding markers:", error);
+      setMapError(true);
     }
-  }, [isMapReady, businesses, selectedBusinessId, onSelectBusiness]);
+  }, [businesses, isMapLoaded, selectedBusiness, setSelectedBusiness]);
 
-  // Center on selected business
+  // Handle selected business change
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !isMapReady || !selectedBusinessId) return;
+    if (!map || !isMapLoaded || !selectedBusiness || typeof google === 'undefined') return;
     
-    const selectedBusiness = businesses.find(b => b.id === selectedBusinessId);
-    if (selectedBusiness) {
+    // Find the marker for this business
+    const markerInfo = markersRef.current.find(m => m.businessId === selectedBusiness.id);
+    
+    if (markerInfo) {
+      // Center the map on this business
       map.panTo({ lat: selectedBusiness.latitude, lng: selectedBusiness.longitude });
       map.setZoom(15);
+      
+      // Open the info window
+      markersRef.current.forEach(m => {
+        try {
+          m.infoWindow.close();
+          
+          // Update animation
+          if (m.businessId === selectedBusiness.id) {
+            m.marker.setAnimation(google.maps.Animation.BOUNCE);
+          } else {
+            m.marker.setAnimation(null);
+          }
+        } catch (e) {
+          console.error("Error updating marker:", e);
+        }
+      });
+      
+      // Open this info window
+      try {
+        markerInfo.infoWindow.open({
+          map,
+          anchor: markerInfo.marker
+        });
+      } catch (e) {
+        console.error("Error opening info window:", e);
+      }
     }
-  }, [isMapReady, selectedBusinessId, businesses]);
+  }, [selectedBusiness, isMapLoaded]);
 
+  // Handle expand/collapse
   const handleExpand = () => {
     setIsExpanded(!isExpanded);
+    
+    // Trigger resize event after expansion to fix map display
+    setTimeout(() => {
+      if (mapInstanceRef.current && typeof google !== 'undefined') {
+        try {
+          // Force map to resize to fit container
+          google.maps.event.addDomListener(window, 'resize', function() {
+            mapInstanceRef.current?.setCenter(mapInstanceRef.current.getCenter()!);
+          });
+          
+          // Trigger the resize event
+          window.dispatchEvent(new Event('resize'));
+        } catch (e) {
+          console.error("Error resizing map:", e);
+        }
+      }
+    }, 100);
   };
 
+  // Handle refresh map (recenter)
   const handleRefresh = () => {
     const map = mapInstanceRef.current;
-    const currentMarkers = markersRef.current;
-    
-    if (!map || !isMapReady || !currentMarkers.length) return;
+    if (!map || !isMapLoaded || businesses.length === 0) return;
     
     try {
       const bounds = new google.maps.LatLngBounds();
-      currentMarkers.forEach(marker => {
-        bounds.extend(marker.getPosition()!);
+      businesses.forEach(business => {
+        if (business.latitude && business.longitude) {
+          bounds.extend({ lat: business.latitude, lng: business.longitude });
+        }
       });
       map.fitBounds(bounds);
     } catch (error) {
@@ -192,8 +263,28 @@ const MapView = ({ businesses, selectedBusinessId, onSelectBusiness }: MapViewPr
     }
   };
 
+  // Check if Google Maps failed to load
+  useEffect(() => {
+    if (isMapLoaded && (typeof google === 'undefined' || !google.maps)) {
+      setMapError(true);
+    }
+  }, [isMapLoaded]);
+
+  // If map error, show error message
+  if (mapError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4">
+        <h3 className="text-lg font-medium text-red-800">Map unavailable</h3>
+        <p className="text-red-700 mt-1">
+          Google Maps couldn't be loaded. This may be due to API key restrictions or 
+          network issues. You can still browse businesses in the list view.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="mb-8">
+    <div className="mb-8 relative">
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-medium text-xl">Map View</h2>
         <div className="flex space-x-2">
@@ -203,29 +294,29 @@ const MapView = ({ businesses, selectedBusinessId, onSelectBusiness }: MapViewPr
             onClick={handleExpand}
             className="flex items-center text-sm py-1.5 px-3"
           >
-            <i className={`fas fa-${isExpanded ? 'compress-alt' : 'expand-alt'} mr-2`}></i>
+            <span className="mr-2">{isExpanded ? '−' : '+'}</span>
             {isExpanded ? 'Collapse' : 'Expand'}
           </Button>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handleRefresh}
-            className="text-sm py-1.5 px-3"
+            className="flex items-center text-sm py-1.5 px-3"
           >
-            <i className="fas fa-sync-alt mr-2"></i>
+            <span className="mr-2">↻</span>
             Refresh
           </Button>
         </div>
       </div>
       
-      <div className={`map-container ${isExpanded ? 'h-[70vh]' : ''}`}>
+      <div className={`map-container border rounded-lg ${isExpanded ? 'h-[70vh]' : 'h-[600px]'}`}>
         <div ref={mapRef} className="h-full w-full">
           {!businesses.length && (
-            <div className="h-full w-full flex items-center justify-center bg-slate-200">
-              <div className="text-center">
-                <i className="fas fa-map-marked-alt text-5xl text-slate-400 mb-4"></i>
+            <div className="h-full w-full flex items-center justify-center bg-slate-100">
+              <div className="text-center p-8">
+                <div className="text-5xl text-slate-400 mb-4">🗺️</div>
                 <p className="text-slate-600">No businesses to display on the map</p>
-                <p className="text-sm text-slate-500">Try different search criteria</p>
+                <p className="text-sm text-slate-500 mt-2">Try different search criteria</p>
               </div>
             </div>
           )}
@@ -234,22 +325,28 @@ const MapView = ({ businesses, selectedBusinessId, onSelectBusiness }: MapViewPr
         {/* Map Controls */}
         <div className="absolute bottom-4 right-4 flex flex-col space-y-2">
           <button 
-            className="bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md"
+            className="bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-gray-100"
             onClick={() => {
               const map = mapInstanceRef.current;
-              if (map && isMapReady) map.setZoom((map.getZoom() || 8) + 1);
+              if (map && isMapLoaded) {
+                const currentZoom = map.getZoom() || 8;
+                map.setZoom(currentZoom + 1);
+              }
             }}
           >
-            <i className="fas fa-plus text-slate-700"></i>
+            <span className="text-slate-700 text-lg">+</span>
           </button>
           <button 
-            className="bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md"
+            className="bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-gray-100"
             onClick={() => {
               const map = mapInstanceRef.current;
-              if (map && isMapReady) map.setZoom((map.getZoom() || 8) - 1);
+              if (map && isMapLoaded) {
+                const currentZoom = map.getZoom() || 8;
+                map.setZoom(currentZoom - 1);
+              }
             }}
           >
-            <i className="fas fa-minus text-slate-700"></i>
+            <span className="text-slate-700 text-lg">−</span>
           </button>
         </div>
       </div>

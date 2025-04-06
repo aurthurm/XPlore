@@ -5,165 +5,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { loadGoogleMapsScript } from "@/lib/utils";
 import FilterSidebar from "@/components/FilterSidebar";
 import BusinessCard from "@/components/BusinessCard";
+import MapView from "@/components/MapView";
 import { Business as BusinessSchema, Category } from "@shared/schema";
 import { Business } from "@/types";
 
-// Fallback component displayed when map is loading or unavailable
-const FallbackMapView = ({ businesses }: { businesses: Business[] }) => {
-  // Show businesses as a list instead of on a map
+// Fallback component displayed when no businesses available
+const EmptyBusinessView = () => {
   return (
     <div className="w-full rounded-lg border p-4 bg-background">
       <div className="flex items-center mb-4">
         <MapPin className="h-6 w-6 text-muted-foreground mr-2" />
         <div>
-          <h3 className="text-lg font-medium">Map View Unavailable</h3>
+          <h3 className="text-lg font-medium">No Businesses Found</h3>
           <p className="text-sm text-muted-foreground">
-            Viewing businesses in list mode
+            Try adjusting your filters or search criteria
           </p>
         </div>
       </div>
       
-      {businesses.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">No businesses found for the selected criteria</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {businesses.map(business => (
-            <Card key={business.id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <BusinessCard business={business} />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">No businesses match the selected criteria</p>
+      </div>
     </div>
-  );
-};
-
-// Component to render Google Map with business markers
-const MapView = ({ 
-  businesses,
-  selectedBusiness,
-  setSelectedBusiness 
-}: { 
-  businesses: Business[];
-  selectedBusiness: Business | null;
-  setSelectedBusiness: (business: Business | null) => void;
-}) => {
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
-  
-  // Center of Zimbabwe (approximate)
-  const defaultCenter = { lat: -19.0154, lng: 29.1549 };
-  
-  // Load Google Maps script
-  useEffect(() => {
-    loadGoogleMapsScript()
-      .then(() => setMapLoaded(true))
-      .catch(error => console.error("Failed to load Google Maps:", error));
-  }, []);
-  
-  // Initialize map when script is loaded
-  useEffect(() => {
-    if (!mapLoaded || !document.getElementById('map')) return;
-    
-    const newMap = new google.maps.Map(document.getElementById('map') as HTMLElement, {
-      center: defaultCenter,
-      zoom: 7,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: true
-    });
-    
-    setMap(newMap);
-  }, [mapLoaded]);
-  
-  // Add markers when map and businesses are available
-  useEffect(() => {
-    if (!map || !businesses.length) return;
-    
-    try {
-      // Clear existing markers
-      markers.forEach(marker => marker.setMap(null));
-      const newMarkers: google.maps.Marker[] = [];
-      
-      // Create bounds to fit all markers
-      const bounds = new google.maps.LatLngBounds();
-      
-      // Add markers for each business
-      businesses.forEach(business => {
-        if (!business.latitude || !business.longitude) return;
-        
-        const position = { 
-          lat: business.latitude, 
-          lng: business.longitude 
-        };
-        
-        const marker = new google.maps.Marker({
-          position,
-          map,
-          title: business.name,
-          animation: business.id === selectedBusiness?.id ? 
-            google.maps.Animation.BOUNCE : undefined
-        });
-        
-        marker.addListener('click', () => {
-          setSelectedBusiness(business);
-        });
-        
-        newMarkers.push(marker);
-        bounds.extend(position);
-      });
-      
-      setMarkers(newMarkers);
-      
-      // Adjust map to fit all markers if there are any
-      if (newMarkers.length > 0) {
-        map.fitBounds(bounds);
-        
-        // If only one marker, zoom out a bit
-        if (newMarkers.length === 1) {
-          const zoomListener = google.maps.event.addListener(map, 'idle', () => {
-            map.setZoom(Math.min(14, map.getZoom() || 14));
-            google.maps.event.removeListener(zoomListener);
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error updating map markers:", error);
-      setMapLoaded(false);
-    }
-  }, [map, businesses, selectedBusiness]);
-  
-  // Handle error loading Google Maps
-  const [mapError, setMapError] = useState<boolean>(false);
-  
-  useEffect(() => {
-    // Check for Google Maps load error
-    const checkMapError = () => {
-      if (window.google?.maps === undefined && mapLoaded) {
-        setMapError(true);
-      }
-    };
-    
-    // Allow a short time for map to load
-    const timeout = setTimeout(checkMapError, 2000);
-    
-    return () => clearTimeout(timeout);
-  }, [mapLoaded]);
-  
-  if (!mapLoaded || mapError) {
-    return <FallbackMapView businesses={businesses} />;
-  }
-  
-  return (
-    <div id="map" className="w-full h-[600px] rounded-lg border"></div>
   );
 };
 
