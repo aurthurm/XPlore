@@ -28,7 +28,7 @@ export default function MainNav() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
+      <div className="container flex h-14 items-center px-4">
         <div className="mr-4 flex items-center">
           <Link href="/" className="flex items-center space-x-2">
             <span className="text-primary text-2xl">
@@ -182,16 +182,8 @@ export default function MainNav() {
             )}
           </nav>
 
-          {/* Search and user actions */}
+          {/* User actions */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Search"
-              className="text-muted-foreground"
-            >
-              <Search className="h-5 w-5" />
-            </Button>
 
             {user ? (
               <DropdownMenu>

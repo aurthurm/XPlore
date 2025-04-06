@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Itinerary, ItineraryDay, ItineraryItem, Business } from '@shared/schema';
-import { Plus, Calendar, ListChecks, Trash2, Edit, X, ChevronRight, Map, Heart, HeartOff } from 'lucide-react';
-import { format } from 'date-fns';
+import { 
+  Plus, Calendar, ListChecks, Trash2, Edit, X, ChevronRight, Map, 
+  Heart, HeartOff, Clock, MapPin, Car, Hotel, Utensils, Mountain, Ticket 
+} from 'lucide-react';
+import { format, addDays, isSameDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -50,9 +53,17 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("itineraries");
   const [currentItinerary, setCurrentItinerary] = useState<Itinerary | null>(null);
   const [activeItineraryId, setActiveItineraryId] = useState<number | null>(null);
+  
+  // State for itinerary details
+  const [selectedItineraryId, setSelectedItineraryId] = useState<number | null>(null);
+  const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
+  const [newDayOpen, setNewDayOpen] = useState(false);
+  const [newItemOpen, setNewItemOpen] = useState(false);
+  const [dayItems, setDayItems] = useState<Record<number, ItineraryItem[]>>({}); 
 
   // Form states
   const [newItineraryTitle, setNewItineraryTitle] = useState('');
@@ -274,11 +285,102 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
     }
   };
 
-  // Open specific itinerary details in a new page
+  // Open itinerary details in a modal
   const openItineraryDetails = (id: number) => {
-    setLocation(`/itinerary/${id}`);
-    setIsOpen(false);
+    setSelectedItineraryId(id);
+    setIsDetailsModalOpen(true);
   };
+  
+  // Fetch itinerary details
+  const { data: selectedItinerary, isLoading: itineraryLoading } = useQuery<Itinerary>({
+    queryKey: ['/api/itineraries', selectedItineraryId],
+    enabled: !!selectedItineraryId && isDetailsModalOpen,
+    queryFn: async () => {
+      const res = await apiRequest('GET', `/api/itineraries/${selectedItineraryId}`);
+      return await res.json();
+    }
+  });
+  
+  // Fetch itinerary days
+  const { data: days = [], isLoading: daysLoading } = useQuery<ItineraryDay[]>({
+    queryKey: ['/api/itineraries', selectedItineraryId, 'days'],
+    enabled: !!selectedItineraryId && isDetailsModalOpen,
+    queryFn: async () => {
+      const res = await apiRequest('GET', `/api/itineraries/${selectedItineraryId}/days`);
+      return await res.json();
+    }
+  });
+  
+  // Create new day mutation
+  const createDayMutation = useMutation({
+    mutationFn: async (data: { date: string, notes?: string }) => {
+      if (!selectedItineraryId) throw new Error("No itinerary selected");
+
+      // Calculate day number based on start date
+      const dayNumber = selectedItinerary?.startDate 
+        ? Math.floor(
+            (new Date(data.date).getTime() - new Date(selectedItinerary.startDate).getTime()) 
+            / (1000 * 60 * 60 * 24)
+          ) + 1 
+        : 1;
+      
+      const res = await apiRequest('POST', `/api/itineraries/${selectedItineraryId}/days`, {
+        ...data,
+        dayNumber
+      });
+      return await res.json();
+    },
+    onSuccess: (newDay) => {
+      // Initialize empty items array for the new day
+      setDayItems(prev => ({
+        ...prev,
+        [newDay.id]: []
+      }));
+      
+      // Refetch itinerary days
+      queryClient.invalidateQueries({ queryKey: ['/api/itineraries', selectedItineraryId, 'days'] });
+      setNewDayOpen(false);
+      toast({
+        title: "Day added",
+        description: "The day has been added to your itinerary.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add day",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Fetch items for each day
+  useEffect(() => {
+    if (!days || days.length === 0 || !isDetailsModalOpen) return;
+    
+    const fetchItemsForDays = async () => {
+      const newDayItems: Record<number, ItineraryItem[]> = {};
+      
+      try {
+        for (const day of days) {
+          const res = await apiRequest('GET', `/api/itinerary-days/${day.id}/items`);
+          const items = await res.json();
+          newDayItems[day.id] = items;
+        }
+        
+        setDayItems(newDayItems);
+      } catch (error) {
+        console.error("Error fetching items:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load itinerary items",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    fetchItemsForDays();
+  }, [days, isDetailsModalOpen, toast]);
 
   // Toggle between active and wishlist
   const handleToggleWishlist = (businessId: number) => {
@@ -592,6 +694,342 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add Day Modal */}
+      <Dialog open={newDayOpen} onOpenChange={setNewDayOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Day to Itinerary</DialogTitle>
+            <DialogDescription>
+              Add a new day to your itinerary.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="date">Date</Label>
+              <DatePicker
+                date={newItineraryStartDate}
+                setDate={setNewItineraryStartDate}
+                placeholder="Select date"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                value={newItineraryDescription}
+                onChange={(e) => setNewItineraryDescription(e.target.value)}
+                placeholder="Add any notes for this day"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewDayOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (!newItineraryStartDate) {
+                  toast({
+                    title: "Date required",
+                    description: "Please select a date for this day",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+                
+                createDayMutation.mutate({
+                  date: newItineraryStartDate.toISOString(),
+                  notes: newItineraryDescription || undefined
+                });
+              }} 
+              disabled={createDayMutation.isPending}
+            >
+              {createDayMutation.isPending ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-background border-t-transparent rounded-full mr-2"></div>
+                  Adding...
+                </>
+              ) : (
+                "Add Day"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add Item Modal */}
+      <Dialog open={newItemOpen} onOpenChange={setNewItemOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Activity to Day</DialogTitle>
+            <DialogDescription>
+              Add a new activity, accommodation or transportation to your itinerary day.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="item-type">Activity Type</Label>
+              <select
+                id="item-type"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={selectedDayId ? 'activity' : ''}
+                onChange={(e) => {
+                  // Handle type change
+                }}
+              >
+                <option value="activity">Activity</option>
+                <option value="accommodation">Accommodation</option>
+                <option value="transportation">Transportation</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="item-title">Title</Label>
+              <Input
+                id="item-title"
+                placeholder="Enter title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="item-description">Description (optional)</Label>
+              <Textarea
+                id="item-description"
+                placeholder="Add details about this activity"
+                rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="item-start-time">Start Time (optional)</Label>
+                <Input
+                  id="item-start-time"
+                  type="time"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="item-end-time">End Time (optional)</Label>
+                <Input
+                  id="item-end-time"
+                  type="time"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="item-location">Location (optional)</Label>
+              <Input
+                id="item-location"
+                placeholder="Enter location"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewItemOpen(false)}>
+              Cancel
+            </Button>
+            <Button>Add Item</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Itinerary Details Modal */}
+      <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          {itineraryLoading || !selectedItinerary ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-2xl">{selectedItinerary.title}</DialogTitle>
+                <DialogDescription className="flex flex-col md:flex-row gap-2 md:gap-4">
+                  {selectedItinerary.startDate && (
+                    <div className="flex items-center">
+                      <Calendar className="h-4 w-4 mr-1" />
+                      <span>
+                        {format(new Date(selectedItinerary.startDate), 'MMM d, yyyy')}
+                        {selectedItinerary.endDate && ` - ${format(new Date(selectedItinerary.endDate), 'MMM d, yyyy')}`}
+                      </span>
+                    </div>
+                  )}
+                  {selectedItinerary.description && (
+                    <p className="text-muted-foreground">{selectedItinerary.description}</p>
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="py-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium">Itinerary Days</h3>
+                  <Button 
+                    size="sm" 
+                    onClick={() => setNewDayOpen(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Add Day
+                  </Button>
+                </div>
+                
+                {daysLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                  </div>
+                ) : days.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                    <p>No days added to this itinerary yet.</p>
+                    <Button 
+                      variant="link" 
+                      onClick={() => setNewDayOpen(true)}
+                    >
+                      Add your first day
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {days
+                      .sort((a, b) => a.dayNumber - b.dayNumber)
+                      .map((day) => (
+                        <Card key={day.id}>
+                          <CardHeader className="pb-2">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <CardTitle className="text-lg">Day {day.dayNumber}: {format(new Date(day.date), 'EEEE, MMMM d')}</CardTitle>
+                                {day.notes && (
+                                  <CardDescription>{day.notes}</CardDescription>
+                                )}
+                              </div>
+                              <div className="flex gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => setSelectedDayId(day.id)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-destructive"
+                                  onClick={() => {
+                                    if (confirm('Are you sure you want to delete this day? All items will be lost.')) {
+                                      // Implement delete day functionality
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {dayItems[day.id]?.length > 0 ? (
+                              <div className="space-y-3">
+                                {(dayItems[day.id] || [])
+                                  .sort((a, b) => {
+                                    if (!a.startTime && !b.startTime) return 0;
+                                    if (!a.startTime) return 1;
+                                    if (!b.startTime) return -1;
+                                    return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+                                  })
+                                  .map((item) => (
+                                    <div key={item.id} className="p-3 border rounded-md bg-muted/30">
+                                      <div className="flex justify-between items-start">
+                                        <div className="flex items-start gap-2">
+                                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                            {item.type === 'accommodation' && <Hotel className="h-4 w-4 text-primary" />}
+                                            {item.type === 'transportation' && <Car className="h-4 w-4 text-primary" />}
+                                            {item.type === 'activity' && <Mountain className="h-4 w-4 text-primary" />}
+                                            {item.type === 'custom' && <Ticket className="h-4 w-4 text-primary" />}
+                                          </div>
+                                          <div>
+                                            <h4 className="font-medium text-sm">{item.title}</h4>
+                                            {item.description && (
+                                              <p className="text-xs text-muted-foreground">{item.description}</p>
+                                            )}
+                                            <div className="flex flex-wrap gap-x-3 mt-1">
+                                              {item.startTime && (
+                                                <div className="flex items-center text-xs text-muted-foreground">
+                                                  <Clock className="h-3 w-3 mr-1" />
+                                                  {format(new Date(item.startTime), 'h:mm a')}
+                                                  {item.endTime && ` - ${format(new Date(item.endTime), 'h:mm a')}`}
+                                                </div>
+                                              )}
+                                              {item.location && (
+                                                <div className="flex items-center text-xs text-muted-foreground">
+                                                  <MapPin className="h-3 w-3 mr-1" />
+                                                  {item.location}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex gap-1">
+                                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                            <Edit className="h-3 w-3" />
+                                          </Button>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-7 w-7 p-0 text-destructive"
+                                            onClick={() => {
+                                              if (confirm('Are you sure you want to delete this item?')) {
+                                                // Implement delete item functionality
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-3 text-muted-foreground text-sm">
+                                <p>No activities planned for this day.</p>
+                                <Button 
+                                  variant="link" 
+                                  size="sm" 
+                                  className="mt-1"
+                                  onClick={() => {
+                                    setSelectedDayId(day.id);
+                                    setNewItemOpen(true);
+                                  }}
+                                >
+                                  Add an activity
+                                </Button>
+                              </div>
+                            )}
+                            <div className="mt-3 text-right">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedDayId(day.id);
+                                  setNewItemOpen(true);
+                                }}
+                              >
+                                <Plus className="h-4 w-4 mr-1" /> Add Item
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                )}
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDetailsModalOpen(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>
