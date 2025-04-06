@@ -68,6 +68,10 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
   const { data: itineraries = [], isLoading: isLoadingItineraries } = useQuery<Itinerary[]>({
     queryKey: ['/api/itineraries/user', user?.id],
     enabled: !!user?.id,
+    queryFn: async () => {
+      const res = await apiRequest('GET', `/api/itineraries/user/${user?.id}`);
+      return await res.json();
+    }
   });
 
   // Fetch wishlist (in a real app, this would be a different API endpoint)
