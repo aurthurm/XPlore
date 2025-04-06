@@ -12,7 +12,6 @@ import Home from "@/pages/Home";
 import BusinessDetails from "@/pages/BusinessDetails";
 import BusinessDashboard from "@/pages/BusinessDashboard";
 import BusinessClaim from "@/pages/BusinessClaim";
-import Itineraries from "@/pages/Itineraries";
 import ItineraryDetails from "@/pages/ItineraryDetails";
 import ItineraryMap from "@/pages/ItineraryMap";
 import Explore from "@/pages/Explore";
@@ -43,7 +42,6 @@ function Router() {
           <Route path="/auth" component={AuthPage} />
           <ProtectedRoute path="/dashboard" component={BusinessDashboard} />
           <ProtectedRoute path="/claim/:id?" component={BusinessClaim} />
-          <ProtectedRoute path="/itineraries" component={Itineraries} />
           <ProtectedRoute path="/itinerary/:id" component={ItineraryDetails} />
           <ProtectedRoute path="/itinerary/:id/map" component={ItineraryMap} />
           <Route component={NotFound} />

@@ -1,8 +1,9 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Search, User, LogOut } from "lucide-react";
+import { Menu, Search, User, LogOut, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import ItineraryDrawer from "@/components/ItineraryDrawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +24,6 @@ export default function MainNav() {
   const navItems = [
     { name: "Home", path: "/" },
     { name: "Explore", path: "/explore" },
-    { name: "Itineraries", path: "/itineraries" },
   ];
 
   return (
@@ -73,6 +73,18 @@ export default function MainNav() {
                     {item.name}
                   </Link>
                 ))}
+                <div className={`px-7 py-2 text-base font-medium transition-colors ${
+                      location.startsWith("/itinerary")
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-muted"
+                    }`}>
+                  <ItineraryDrawer>
+                    <button className="flex items-center font-medium">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Itineraries
+                    </button>
+                  </ItineraryDrawer>
+                </div>
                 {user?.isBusiness && (
                   <Link
                     href="/dashboard"
@@ -144,6 +156,18 @@ export default function MainNav() {
                 {item.name}
               </Link>
             ))}
+            <ItineraryDrawer>
+              <button className={`text-sm font-medium transition-colors ${
+                  location.startsWith("/itinerary")
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-primary"
+                }`}>
+                <span className="flex items-center">
+                  <Calendar className="w-4 h-4 mr-1" />
+                  Itineraries
+                </span>
+              </button>
+            </ItineraryDrawer>
             {user?.isBusiness && (
               <Link
                 href="/dashboard"
@@ -196,8 +220,13 @@ export default function MainNav() {
                   <DropdownMenuItem asChild>
                     <Link href="/profile">Profile</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/itineraries">My Itineraries</Link>
+                  <DropdownMenuItem>
+                    <ItineraryDrawer>
+                      <div className="flex items-center w-full">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        My Itineraries
+                      </div>
+                    </ItineraryDrawer>
                   </DropdownMenuItem>
                   {user.isBusiness && (
                     <DropdownMenuItem asChild>
