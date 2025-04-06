@@ -4,6 +4,7 @@ import { Loader2, MapPin, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import { loadGoogleMapsScript } from "@/lib/utils";
 import FilterSidebar from "@/components/FilterSidebar";
 import BusinessCard from "@/components/BusinessCard";
@@ -206,10 +207,43 @@ export default function Explore() {
       <h1 className="text-3xl font-bold mb-6">Explore Zimbabwe</h1>
       
       <div className="flex flex-col md:flex-row gap-6">
-        {/* Map Section */}
-        <div className="w-full md:w-2/3 order-2 md:order-1">
+        {/* Map Section - Increased width */}
+        <div className="w-full md:w-3/4 order-2 md:order-1">
+          {/* Category filter badges shown inline with reset button */}
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+            <Badge
+              variant={selectedCategory === null ? "default" : "outline"}
+              className="cursor-pointer whitespace-nowrap"
+              onClick={() => handleCategoryChange(null)}
+            >
+              All Categories
+            </Badge>
+            
+            {categories.map((category) => (
+              <Badge
+                key={category.id}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                className="cursor-pointer whitespace-nowrap"
+                onClick={() => handleCategoryChange(category.id)}
+              >
+                {category.name}
+              </Badge>
+            ))}
+            
+            {selectedCategory !== null && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="ml-auto whitespace-nowrap"
+                onClick={() => handleCategoryChange(null)}
+              >
+                Reset Filters
+              </Button>
+            )}
+          </div>
+          
           {isLoadingBusinesses ? (
-            <div className="w-full h-[400px] flex items-center justify-center bg-muted rounded-lg">
+            <div className="w-full h-[600px] flex items-center justify-center bg-muted rounded-lg">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
@@ -229,7 +263,7 @@ export default function Explore() {
                   className="mt-4 w-full flex items-center"
                 >
                   <Filter className="mr-2 h-4 w-4" />
-                  Filter Results
+                  More Filters
                 </Button>
               </SheetTrigger>
               <SheetContent side="bottom" className="h-[80vh]">
@@ -262,9 +296,9 @@ export default function Explore() {
           )}
         </div>
         
-        {/* Sidebar - Desktop Only */}
+        {/* Sidebar - Desktop Only, reduced width */}
         {!isMobile && (
-          <div className="w-full md:w-1/3 order-1 md:order-2">
+          <div className="w-full md:w-1/4 order-1 md:order-2">
             <FilterSidebar 
               categories={categories}
               selectedCategory={selectedCategory}
