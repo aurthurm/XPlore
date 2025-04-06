@@ -123,9 +123,9 @@ const Home = () => {
     <>
       <CategoryNavigation onCategoryChange={handleCategoryChange} />
       
-      <main className="container mx-auto px-4 py-8 relative">
+      <main className="px-2 py-6 relative">
         {/* Search Bar - visible below headers */}
-        <div className="mb-8">
+        <div className="mb-6 max-w-4xl mx-auto">
           <form onSubmit={handleSearch} className="flex">
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-5 w-5" />
@@ -141,11 +141,11 @@ const Home = () => {
           </form>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Main Content Area - Destinations */}
-          <div className="lg:col-span-2 xl:col-span-3">
+          <div className="lg:col-span-4">
             {/* Listing Results Header */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-4 px-2">
               <div className="flex items-center">
                 <h2 className="font-medium text-xl mr-3">
                   Popular Destinations
@@ -176,7 +176,7 @@ const Home = () => {
             
             {/* Destination Cards Grid */}
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 px-2">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="animate-pulse bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
                     <div className="bg-slate-200 h-48 w-full"></div>
@@ -192,19 +192,18 @@ const Home = () => {
                 ))}
               </div>
             ) : paginatedBusinesses.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-                {paginatedBusinesses.map((business, index) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 px-2">
+                {paginatedBusinesses.map((business) => (
                   <DestinationCard 
                     key={business.id} 
                     business={business} 
                     isHighlighted={selectedBusinessId === business.id}
                     onClick={() => setSelectedBusinessId(business.id)}
-                    index={index + 1}
                   />
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="text-center py-12 bg-slate-50 rounded-lg border border-slate-200 mx-2">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-400 mb-4">
                   <MapPin className="h-8 w-8" />
                 </div>
@@ -225,7 +224,7 @@ const Home = () => {
             
             {/* Load More Button */}
             {hasMoreResults && (
-              <div className="text-center mb-8">
+              <div className="text-center mb-6">
                 <Button 
                   variant="outline" 
                   onClick={loadMore} 
@@ -239,7 +238,7 @@ const Home = () => {
           </div>
           
           {/* Right Sidebar - News, Events, and Ads */}
-          <div className="lg:col-span-1 xl:col-span-1">
+          <div className="lg:col-span-1">
             <SidebarContent />
           </div>
         </div>

@@ -1,7 +1,7 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wifi, Star, Heart } from "lucide-react";
+import { Wifi, Star, Heart, Cloud, Sun, CloudRain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Business } from "@/types";
 
@@ -12,7 +12,7 @@ interface DestinationCardProps {
   index?: number;
 }
 
-const DestinationCard = ({ business, onClick, isHighlighted, index }: DestinationCardProps) => {
+const DestinationCard = ({ business, onClick, isHighlighted }: DestinationCardProps) => {
   const {
     id,
     name,
@@ -31,7 +31,7 @@ const DestinationCard = ({ business, onClick, isHighlighted, index }: Destinatio
   // Format price level to show price per night/month
   const formatPrice = (price: number | undefined) => {
     if (!price) return "Price on request";
-    return `$${price.toLocaleString()} / mo`;
+    return `$${price.toLocaleString()}`;
   };
 
   // Get location display text
@@ -51,6 +51,34 @@ const DestinationCard = ({ business, onClick, isHighlighted, index }: Destinatio
     return "https://source.unsplash.com/random/800x600/?destination";
   };
 
+  // Get random weather (in a real app, this would fetch from a weather API)
+  const getWeather = () => {
+    // For demo purposes, generate random weather
+    const weathers = ["sunny", "cloudy", "rainy"];
+    const weatherType = weathers[Math.floor(Math.random() * weathers.length)];
+    
+    const getIcon = () => {
+      switch (weatherType) {
+        case "sunny": return <Sun className="h-3.5 w-3.5 mr-1 text-yellow-500" />;
+        case "cloudy": return <Cloud className="h-3.5 w-3.5 mr-1 text-gray-500" />;
+        case "rainy": return <CloudRain className="h-3.5 w-3.5 mr-1 text-blue-500" />;
+        default: return <Sun className="h-3.5 w-3.5 mr-1 text-yellow-500" />;
+      }
+    };
+    
+    const getTemp = () => {
+      // Random temperature between 18-32°C
+      return Math.floor(Math.random() * 14) + 18;
+    };
+    
+    return (
+      <div className="flex items-center">
+        {getIcon()}
+        <span>{getTemp()}°C</span>
+      </div>
+    );
+  };
+
   return (
     <Card
       onClick={onClick}
@@ -60,19 +88,27 @@ const DestinationCard = ({ business, onClick, isHighlighted, index }: Destinatio
       )}
     >
       <div className="relative">
-        {/* Top row with numbers and amenities */}
+        {/* Top row with ratings, price, wifi, and weather */}
         <div className="absolute top-0 left-0 right-0 p-2 flex justify-between items-center">
-          <div className="bg-white/70 backdrop-blur-sm rounded-md text-slate-900 text-sm px-2 py-1">
-            {index || id}
+          <div className="bg-white/70 backdrop-blur-sm rounded-md text-slate-900 text-sm px-2 py-1 flex items-center">
+            <Star className="h-3.5 w-3.5 mr-1 text-yellow-400 fill-yellow-400" />
+            <span>{rating || "N/A"}</span>
           </div>
           
-          {/* WiFi indicator */}
-          {hasWifi && (
-            <div className="bg-white/70 backdrop-blur-sm rounded-md text-slate-900 text-sm px-2 py-1 flex items-center">
-              <Wifi className="h-3.5 w-3.5 mr-1" />
-              <span>10 Mbps</span>
+          <div className="flex space-x-1">
+            {/* Weather indicator */}
+            <div className="bg-white/70 backdrop-blur-sm rounded-md text-slate-900 text-sm px-2 py-1">
+              {getWeather()}
             </div>
-          )}
+            
+            {/* WiFi indicator */}
+            {hasWifi && (
+              <div className="bg-white/70 backdrop-blur-sm rounded-md text-slate-900 text-sm px-2 py-1 flex items-center">
+                <Wifi className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                <span>10 Mbps</span>
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Image */}
@@ -84,27 +120,21 @@ const DestinationCard = ({ business, onClick, isHighlighted, index }: Destinatio
           />
         </div>
         
-        {/* Destination name and country overlay */}
+        {/* Destination name and location overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white">
           <h3 className="font-bold text-xl">{name}</h3>
           <p className="text-sm text-white/80">{getLocation()}</p>
         </div>
       </div>
       
-      {/* Card footer with price and ratings */}
+      {/* Card footer with price and heart button */}
       <div className="p-3 bg-white flex justify-between items-center">
         <div>
           <span className="font-bold text-lg">{formatPrice(priceLevel)}</span>
+          <span className="text-xs text-slate-500 ml-1">/ night</span>
         </div>
         
-        <div className="flex items-center space-x-1">
-          <div className="flex items-center">
-            <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-            <span className="ml-1 text-sm font-medium">{rating || "N/A"}</span>
-          </div>
-          
-          <Heart className="h-5 w-5 text-slate-300 hover:text-red-500 transition-colors cursor-pointer" />
-        </div>
+        <Heart className="h-5 w-5 text-slate-300 hover:text-red-500 transition-colors cursor-pointer" />
       </div>
     </Card>
   );
