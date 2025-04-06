@@ -39,10 +39,32 @@ const DestinationCard = ({ business, onClick, isHighlighted }: DestinationCardPr
   // Convert amenities to boolean values
   const hasWifi = Array.isArray(amenities) && amenities.includes("wifi");
   
-  // Format price level to show price per night/month
+  // Format price level to show price with appropriate unit based on category
   const formatPrice = (price: number | undefined) => {
     if (!price) return "Price on request";
     return `$${price.toLocaleString()}`;
+  };
+  
+  // Get price unit based on category
+  const getPriceUnit = () => {
+    const categoryId = business.categoryId;
+    
+    switch (categoryId) {
+      case 1: // Accommodation
+        return "/ night";
+      case 2: // Dining
+        return "/ meal";
+      case 3: // Attractions
+        return "/ person";
+      case 4: // Shopping
+        return "";
+      case 5: // Transportation
+        return "/ day";
+      case 6: // Tours
+        return "/ tour";
+      default:
+        return "";
+    }
   };
 
   // Get location display text
@@ -166,7 +188,7 @@ const DestinationCard = ({ business, onClick, isHighlighted }: DestinationCardPr
       <div className="p-3 bg-white flex justify-between items-center">
         <div>
           <span className="font-bold text-lg">{formatPrice(priceLevel)}</span>
-          <span className="text-xs text-slate-500 ml-1">/ night</span>
+          <span className="text-xs text-slate-500 ml-1">{getPriceUnit()}</span>
         </div>
         
         <div className="flex items-center space-x-2">

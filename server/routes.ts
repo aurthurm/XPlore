@@ -1009,6 +1009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Sample data for initial load
       const sampleBusinesses = [
+        // Category 1: Accommodation (price unit: / night)
         {
           name: "Victoria Falls Hotel",
           description: "Historic 5-star hotel with stunning views of Victoria Falls",
@@ -1016,30 +1017,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           city: "Victoria Falls",
           latitude: -17.9326,
           longitude: 25.8308,
-          categoryId: 1, // Accommodation
+          categoryId: 1,
           rating: 4.8,
-          priceLevel: 4, // $$$$
+          priceLevel: 350,
           website: "https://www.victoriafallshotel.com",
           phone: "+263 83 2844561",
           images: ["https://images.unsplash.com/photo-1455587734955-081b22074882"],
           tags: ["5-star hotel", "Luxury", "Restaurant"],
           amenities: ["WiFi", "Pool", "Restaurant", "Bar", "Air Conditioning"]
-        },
-        {
-          name: "Great Zimbabwe Ruins",
-          description: "UNESCO World Heritage Site and ancient stone city",
-          address: "Great Zimbabwe, Masvingo",
-          city: "Masvingo",
-          latitude: -20.2852,
-          longitude: 30.9344,
-          categoryId: 3, // Attractions
-          rating: 4.7,
-          priceLevel: 2, // $$
-          website: "https://www.greatzimbabwe.com",
-          phone: "+263 77 1234567",
-          images: ["https://images.unsplash.com/photo-1575223970966-76ae61ee7838"],
-          tags: ["Historical", "Cultural", "Guided Tours"],
-          amenities: ["Guided Tours", "Parking", "Souvenir Shop"]
         },
         {
           name: "Mana Pools Safari Lodge",
@@ -1048,9 +1033,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           city: "Kariba",
           latitude: -15.8760,
           longitude: 29.3851,
-          categoryId: 1, // Accommodation
+          categoryId: 1,
           rating: 4.9,
-          priceLevel: 4, // $$$$
+          priceLevel: 420,
           website: "https://www.manapoolslodge.com",
           phone: "+263 78 9876543",
           images: ["https://images.unsplash.com/photo-1504871881170-d7a841199146"],
@@ -1058,27 +1043,300 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amenities: ["WiFi", "Pool", "Restaurant", "Game Drives", "Bar"]
         },
         {
+          name: "Bulawayo Boutique Hotel",
+          description: "Charming boutique hotel in the heart of Bulawayo",
+          address: "23 Cecil Avenue, Bulawayo",
+          city: "Bulawayo",
+          latitude: -20.1225,
+          longitude: 28.6314,
+          categoryId: 1,
+          rating: 4.5,
+          priceLevel: 180,
+          website: "https://www.bulawayoboutique.com",
+          phone: "+263 77 3456789",
+          images: ["https://images.unsplash.com/photo-1590073242678-70ee3fc28e8e"],
+          tags: ["Boutique", "Central", "Comfortable"],
+          amenities: ["WiFi", "Breakfast", "Air Conditioning", "Laundry"]
+        },
+        {
+          name: "Nyanga Mountain Retreat",
+          description: "Serene mountain lodge with spectacular views of Nyanga National Park",
+          address: "Nyanga National Park",
+          city: "Nyanga",
+          latitude: -18.2172,
+          longitude: 32.7468,
+          categoryId: 1,
+          rating: 4.6,
+          priceLevel: 250,
+          website: "https://www.nyangaretreat.com",
+          phone: "+263 77 9876543",
+          images: ["https://images.unsplash.com/photo-1596394516093-501ba68a0ba6"],
+          tags: ["Mountains", "Nature", "Relaxation"],
+          amenities: ["WiFi", "Fireplace", "Restaurant", "Hiking Trails", "Spa"]
+        },
+        
+        // Category 2: Dining (price unit: / meal)
+        {
           name: "Boma Restaurant",
           description: "Traditional African dining experience with local cuisine",
           address: "745 Fife Street, Harare",
           city: "Harare",
           latitude: -17.8252,
           longitude: 31.0335,
-          categoryId: 2, // Dining
+          categoryId: 2,
           rating: 4.6,
-          priceLevel: 2, // $$
+          priceLevel: 45,
           website: "https://www.bomarestaurant.co.zw",
           phone: "+263 77 8765432",
           images: ["https://images.unsplash.com/photo-1517248135467-4c7edcad34c4"],
           tags: ["Authentic", "Traditional", "Live Music"],
           amenities: ["Live Music", "Outdoor Seating", "Private Dining", "Bar"]
+        },
+        {
+          name: "Zambezi House",
+          description: "Riverside restaurant with international cuisine and spectacular sunset views",
+          address: "Victoria Falls Waterfront",
+          city: "Victoria Falls",
+          latitude: -17.9256,
+          longitude: 25.8367,
+          categoryId: 2,
+          rating: 4.7,
+          priceLevel: 60,
+          website: "https://www.zambezihouse.com",
+          phone: "+263 83 2844789",
+          images: ["https://images.unsplash.com/photo-1515669097368-22e68427d265"],
+          tags: ["International", "Riverside", "Sunset Views"],
+          amenities: ["Outdoor Seating", "Bar", "Vegetarian Options", "Reservations"]
+        },
+        {
+          name: "Indaba Cafe",
+          description: "Trendy cafe serving artisanal coffee and light meals",
+          address: "15 Samora Machel Avenue, Harare",
+          city: "Harare",
+          latitude: -17.8282,
+          longitude: 31.0426,
+          categoryId: 2,
+          rating: 4.5,
+          priceLevel: 15,
+          website: "https://www.indabacafe.co.zw",
+          phone: "+263 77 1234987",
+          images: ["https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb"],
+          tags: ["Coffee", "Brunch", "Pastries"],
+          amenities: ["WiFi", "Takeaway", "Outdoor Seating", "Vegan Options"]
+        },
+        
+        // Category 3: Attractions (price unit: / person)
+        {
+          name: "Great Zimbabwe Ruins",
+          description: "UNESCO World Heritage Site and ancient stone city",
+          address: "Great Zimbabwe, Masvingo",
+          city: "Masvingo",
+          latitude: -20.2852,
+          longitude: 30.9344,
+          categoryId: 3,
+          rating: 4.7,
+          priceLevel: 20,
+          website: "https://www.greatzimbabwe.com",
+          phone: "+263 77 1234567",
+          images: ["https://images.unsplash.com/photo-1575223970966-76ae61ee7838"],
+          tags: ["Historical", "Cultural", "Guided Tours"],
+          amenities: ["Guided Tours", "Parking", "Souvenir Shop"]
+        },
+        {
+          name: "Chinhoyi Caves",
+          description: "Natural wonder featuring the Sleeping Pool, a cobalt blue pool of water",
+          address: "Chinhoyi Caves National Park",
+          city: "Chinhoyi",
+          latitude: -17.3368,
+          longitude: 30.1254,
+          categoryId: 3,
+          rating: 4.5,
+          priceLevel: 15,
+          website: "https://www.chinhoyicaves.com",
+          phone: "+263 77 6543217",
+          images: ["https://images.unsplash.com/photo-1516537219851-dc844c7e1979"],
+          tags: ["Natural Wonder", "Caves", "Swimming"],
+          amenities: ["Guides", "Picnic Area", "Parking"]
+        },
+        {
+          name: "National Gallery of Zimbabwe",
+          description: "Contemporary African art gallery showcasing Zimbabwe's artistic talent",
+          address: "20 Julius Nyerere Way, Harare",
+          city: "Harare",
+          latitude: -17.8308,
+          longitude: 31.0410,
+          categoryId: 3,
+          rating: 4.3,
+          priceLevel: 12,
+          website: "https://www.nationalgallery.co.zw",
+          phone: "+263 77 9876512",
+          images: ["https://images.unsplash.com/photo-1572947650440-e8a97ef053b2"],
+          tags: ["Art", "Cultural", "Museum"],
+          amenities: ["Guided Tours", "Gift Shop", "Cafe"]
+        },
+        
+        // Category 4: Shopping (price unit: "")
+        {
+          name: "Sam Levy's Village",
+          description: "Upscale shopping center with boutique stores and cafes",
+          address: "Borrowdale Road, Harare",
+          city: "Harare",
+          latitude: -17.7623,
+          longitude: 31.0788,
+          categoryId: 4,
+          rating: 4.4,
+          priceLevel: 0,
+          website: "https://www.samlevysvillage.com",
+          phone: "+263 77 8791234",
+          images: ["https://images.unsplash.com/photo-1472851294608-062f824d29cc"],
+          tags: ["Shopping Center", "Boutique", "Dining"],
+          amenities: ["Parking", "Security", "Restaurants", "WiFi"]
+        },
+        {
+          name: "Mbare Market",
+          description: "Vibrant traditional market with authentic Zimbabwean crafts and produce",
+          address: "Mbare, Harare",
+          city: "Harare",
+          latitude: -17.8583,
+          longitude: 31.0389,
+          categoryId: 4,
+          rating: 4.2,
+          priceLevel: 0,
+          website: "https://www.zimbabwetourism.net/mbare-market",
+          phone: "+263 77 1234000",
+          images: ["https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a"],
+          tags: ["Local Market", "Crafts", "Authentic"],
+          amenities: ["Local Guides", "Bargaining"]
+        },
+        {
+          name: "Doon Estate Market",
+          description: "Weekend market featuring artisanal products and organic food",
+          address: "Msasa, Harare",
+          city: "Harare",
+          latitude: -17.8441,
+          longitude: 31.1167,
+          categoryId: 4,
+          rating: 4.6,
+          priceLevel: 0,
+          website: "https://www.doonestate.com",
+          phone: "+263 77 7894561",
+          images: ["https://images.unsplash.com/photo-1488459716781-31db52582fe9"],
+          tags: ["Farmers Market", "Organic", "Artisanal"],
+          amenities: ["Food Court", "Parking", "Family-Friendly"]
+        },
+        
+        // Category 5: Transportation (price unit: / day)
+        {
+          name: "Tashinga Car Rental",
+          description: "Reliable car rental service with a range of vehicles for all terrains",
+          address: "Harare International Airport",
+          city: "Harare",
+          latitude: -17.9319,
+          longitude: 31.0928,
+          categoryId: 5,
+          rating: 4.5,
+          priceLevel: 85,
+          website: "https://www.tashingacarrental.com",
+          phone: "+263 77 9871234",
+          images: ["https://images.unsplash.com/photo-1597007030739-6d2e8c576f72"],
+          tags: ["Car Rental", "Airport", "4x4"],
+          amenities: ["Airport Pickup", "Insurance", "GPS", "Child Seats"]
+        },
+        {
+          name: "Safari Transit",
+          description: "Shuttle service connecting major tourist destinations in Zimbabwe",
+          address: "Victoria Falls Road, Victoria Falls",
+          city: "Victoria Falls",
+          latitude: -17.9315,
+          longitude: 25.8307,
+          categoryId: 5,
+          rating: 4.4,
+          priceLevel: 35,
+          website: "https://www.safaritransit.com",
+          phone: "+263 83 2845678",
+          images: ["https://images.unsplash.com/photo-1464219789935-c2d9d9aba644"],
+          tags: ["Shuttle", "Tours", "Airport Transfer"],
+          amenities: ["Air Conditioning", "WiFi", "Bottled Water", "Scheduled Routes"]
+        },
+        {
+          name: "Zimbabwe River Cruises",
+          description: "Luxury boat transfers and dinner cruises on the Zambezi River",
+          address: "Zambezi River, Victoria Falls",
+          city: "Victoria Falls",
+          latitude: -17.9248,
+          longitude: 25.8574,
+          categoryId: 5,
+          rating: 4.8,
+          priceLevel: 110,
+          website: "https://www.zimbabwecruises.com",
+          phone: "+263 83 2847890",
+          images: ["https://images.unsplash.com/photo-1519640350407-953abc0d8dec"],
+          tags: ["Cruise", "Luxury", "River Transfer"],
+          amenities: ["Catering", "Guided Tour", "Sunset Cruise", "Private Charter"]
+        },
+        
+        // Category 6: Tours (price unit: / tour)
+        {
+          name: "Wild Horizons Safaris",
+          description: "Premier safari operator offering guided wildlife experiences in Hwange National Park",
+          address: "Hwange National Park",
+          city: "Hwange",
+          latitude: -18.3631,
+          longitude: 26.4898,
+          categoryId: 6,
+          rating: 4.9,
+          priceLevel: 250,
+          website: "https://www.wildhorizons.com",
+          phone: "+263 77 1234111",
+          images: ["https://images.unsplash.com/photo-1516426122078-c23e76319801"],
+          tags: ["Safari", "Wildlife", "Photography"],
+          amenities: ["Experienced Guides", "Transport", "Meals", "Accommodation"]
+        },
+        {
+          name: "Victoria Falls Adventure Tours",
+          description: "Adrenaline-packed activities including bungee jumping, white water rafting, and zip lining",
+          address: "Victoria Falls Bridge",
+          city: "Victoria Falls",
+          latitude: -17.9346,
+          longitude: 25.8284,
+          categoryId: 6,
+          rating: 4.7,
+          priceLevel: 175,
+          website: "https://www.victoriafallsadventure.com",
+          phone: "+263 83 2841111",
+          images: ["https://images.unsplash.com/photo-1530866495561-e37106660e57"],
+          tags: ["Adventure", "Adrenaline", "White Water Rafting"],
+          amenities: ["Safety Equipment", "Professional Guides", "Photos", "Insurance"]
+        },
+        {
+          name: "Harare Heritage Tours",
+          description: "Cultural and historical walking tours of Zimbabwe's capital city",
+          address: "First Street, Harare",
+          city: "Harare",
+          latitude: -17.8304,
+          longitude: 31.0507,
+          categoryId: 6,
+          rating: 4.5,
+          priceLevel: 45,
+          website: "https://www.harareheritage.com",
+          phone: "+263 77 7894567",
+          images: ["https://images.unsplash.com/photo-1530521954074-e64f6810b32d"],
+          tags: ["Cultural", "Historical", "Walking Tour"],
+          amenities: ["Local Guide", "Refreshments", "Souvenir", "Small Groups"]
         }
       ];
       
-      // Add sample businesses if they don't exist
+      // Reset sample businesses (normally would use a proper migration/seed in production)
+      
+      // Just add new businesses after checking if they already exist by name
       const existingBusinesses = await storage.getBusinesses();
-      if (existingBusinesses.length === 0) {
-        for (const business of sampleBusinesses) {
+      
+      // For each business in sample data, check if it exists by name
+      for (const business of sampleBusinesses) {
+        const exists = existingBusinesses.some(existing => 
+          existing.name === business.name && existing.categoryId === business.categoryId);
+        
+        if (!exists) {
           await storage.createBusiness(business);
         }
       }
@@ -1148,7 +1406,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.json({ message: "Data seeded successfully", count: sampleBusinesses.length });
+      const totalBusinesses = await storage.getBusinesses();
+      res.json({ 
+        message: "Data seeded successfully", 
+        count: totalBusinesses.length,
+        categories: await storage.getCategories() 
+      });
     } catch (error) {
       console.error('Error seeding data:', error);
       res.status(500).json({ message: 'Failed to seed data' });
