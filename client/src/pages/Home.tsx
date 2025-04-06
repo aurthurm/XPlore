@@ -16,6 +16,7 @@ import ImportDataSection from "@/components/ImportDataSection";
 import DownloadSection from "@/components/DownloadSection";
 import FilterSidebar from "@/components/FilterSidebar";
 import FilterDrawer from "@/components/FilterDrawer";
+import BusinessDetailsModal from "@/components/BusinessDetailsModal";
 
 // UI components
 import { Button } from "@/components/ui/button";
@@ -220,8 +221,45 @@ const Home = () => {
     return selectedAmenities.length + selectedProvinces.length;
   }, [selectedAmenities, selectedProvinces]);
 
+  // Handle modal visibility for business details
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalBusinessId, setModalBusinessId] = useState<number | null>(null);
+  
+  // Open modal with business details
+  const openBusinessDetailsModal = (businessId: number) => {
+    setModalBusinessId(businessId);
+    setIsModalOpen(true);
+  };
+  
+  // Close modal
+  const closeBusinessDetailsModal = () => {
+    setIsModalOpen(false);
+    setModalBusinessId(null);
+  };
+  
+  // Listen for global events to open business details
+  useEffect(() => {
+    const handleOpenBusinessDetails = (e: Event) => {
+      const customEvent = e as CustomEvent<{businessId: number}>;
+      if (customEvent.detail && customEvent.detail.businessId) {
+        openBusinessDetailsModal(customEvent.detail.businessId);
+      }
+    };
+    
+    window.addEventListener('openBusinessDetails', handleOpenBusinessDetails as EventListener);
+    
+    return () => {
+      window.removeEventListener('openBusinessDetails', handleOpenBusinessDetails as EventListener);
+    };
+  }, []);
+  
   return (
     <>
+      <BusinessDetailsModal 
+        isOpen={isModalOpen}
+        onClose={closeBusinessDetailsModal}
+        businessId={modalBusinessId}
+      />
       <CategoryNavigation onCategoryChange={handleCategoryChange} />
       
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 relative max-w-screen-2xl">
@@ -378,7 +416,10 @@ const Home = () => {
                     key={business.id} 
                     business={business} 
                     isHighlighted={selectedBusinessId === business.id}
-                    onClick={() => setSelectedBusinessId(business.id)}
+                    onClick={() => {
+                      setSelectedBusinessId(business.id);
+                      openBusinessDetailsModal(business.id);
+                    }}
                   />
                 ))}
               </div>

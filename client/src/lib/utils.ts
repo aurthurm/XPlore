@@ -5,6 +5,44 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Format currency with proper symbol
+export function formatCurrency(amount: number, currency: string = 'USD'): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+  }).format(amount);
+}
+
+// Convert price level number to $ symbols
+export function getPriceLevelSymbol(priceLevel: number): string {
+  switch (priceLevel) {
+    case 1:
+      return '$';
+    case 2:
+      return '$$';
+    case 3:
+      return '$$$';
+    case 4:
+      return '$$$$';
+    default:
+      return '';
+  }
+}
+
+// Get emoji for category icon
+export function getCategoryIcon(iconName: string): string {
+  const iconMap: Record<string, string> = {
+    bed: "🏨", // Accommodation
+    utensils: "🍽️", // Dining
+    camera: "🏛️", // Attractions
+    "shopping-bag": "🛍️", // Shopping
+    car: "🚌", // Transportation
+    map: "🧭", // Tours
+  };
+  
+  return iconMap[iconName] || "📍";
+}
+
 // Track whether the Google Maps script is loaded
 let googleMapsLoaded = false;
 let googleMapsLoadPromise: Promise<void> | null = null;
