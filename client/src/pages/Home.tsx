@@ -80,15 +80,24 @@ const Home = () => {
     // Add amenities filter if any are selected
     if (selectedAmenities.length > 0) {
       params.set('amenities', JSON.stringify(selectedAmenities));
+    } else {
+      params.delete('amenities');
     }
     
     // Add province filter if any are selected
     if (selectedProvinces.length > 0) {
       params.set('provinces', JSON.stringify(selectedProvinces));
+    } else {
+      params.delete('provinces');
+    }
+    
+    // Make sure category filter is applied if set
+    if (selectedCategory !== null) {
+      params.set('categoryId', selectedCategory.toString());
     }
     
     return `/api/businesses?${params.toString()}`;
-  }, [location, selectedAmenities, selectedProvinces]);
+  }, [location, selectedAmenities, selectedProvinces, selectedCategory]);
 
   // Fetch businesses
   const { 

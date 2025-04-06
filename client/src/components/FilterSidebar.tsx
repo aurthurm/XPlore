@@ -179,48 +179,15 @@ function FilterSidebar({
   return (
     <Card className={cn("bg-background", className)}>
       <CardContent className="p-4">
-        <h3 className="font-medium text-lg mb-4">Filters</h3>
-        
-        {/* Categories filter */}
-        <div>
-          <h4 className="text-sm font-medium mb-2">Categories</h4>
-          
-          {isLoading ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="ml-2 text-sm">Loading categories...</span>
-            </div>
-          ) : categories.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No categories found</p>
-          ) : (
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Badge
-                variant={selectedCategory === null ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => onCategoryChange(null)}
-              >
-                All
-              </Badge>
-              
-              {categories.map((category) => (
-                <Badge
-                  key={category.id}
-                  variant={selectedCategory === category.id ? "default" : "outline"}
-                  className="cursor-pointer relative"
-                  onClick={() => onCategoryChange(category.id)}
-                >
-                  <span className="mr-1">{getCategoryIcon(category.icon)}</span>
-                  {category.name}
-                  <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {categoryAmenities[category.id]?.length || 0}
-                  </span>
-                </Badge>
-              ))}
-            </div>
+        <div className="flex justify-between items-center">
+          <h3 className="font-medium text-lg mb-4">Filters</h3>
+          {selectedCategory !== null && (
+            <Badge variant="outline" className="mb-4">
+              <span className="mr-1">{getCategoryIcon(categories.find(c => c.id === selectedCategory)?.icon || '')}</span>
+              {categories.find(c => c.id === selectedCategory)?.name || 'Selected Category'}
+            </Badge>
           )}
         </div>
-
-        <Separator className="my-4" />
         
         {/* Amenities filter with two columns */}
         <div className="mb-4">
@@ -301,10 +268,20 @@ function FilterSidebar({
             size="sm" 
             className="w-full"
             onClick={() => {
-              onCategoryChange(null);
-              // Reset other filters
-              selectedAmenities.forEach(amenity => onAmenityChange(amenity));
-              selectedProvinces.forEach(province => onProvinceChange(province));
+              // Reset category first (if not already null)
+              if (selectedCategory !== null) {
+                onCategoryChange(null);
+              }
+              
+              // Reset amenities
+              if (selectedAmenities.length > 0) {
+                selectedAmenities.forEach(amenity => onAmenityChange(amenity));
+              }
+              
+              // Reset provinces
+              if (selectedProvinces.length > 0) {
+                selectedProvinces.forEach(province => onProvinceChange(province));
+              }
             }}
           >
             Reset All Filters
