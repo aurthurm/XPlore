@@ -215,7 +215,7 @@ const Home = () => {
     <>
       <CategoryNavigation onCategoryChange={handleCategoryChange} />
       
-      <main className="px-2 py-6 relative">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 relative max-w-screen-2xl">
         {/* Search Bar - visible below headers */}
         <div className="mb-6 max-w-4xl mx-auto">
           <form onSubmit={handleSearch} className="flex">
@@ -233,7 +233,7 @@ const Home = () => {
           </form>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 xl:gap-8">
           {/* Filter Sidebar - Only on desktop */}
           {!isMobile && isFilterOpen && (
             <div className="hidden lg:block lg:col-span-1">
@@ -251,7 +251,7 @@ const Home = () => {
           )}
           
           {/* Main Content Area - Destinations */}
-          <div className={`lg:col-span-${isFilterOpen ? '4' : '4'}`}>
+          <div className="lg:col-span-4">
             {/* Listing Results Header */}
             <div className="flex justify-between items-center mb-4 px-2">
               <div className="flex items-center">
@@ -347,11 +347,11 @@ const Home = () => {
             
             {/* Destination Cards Grid */}
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 px-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 mb-8 px-2">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="animate-pulse bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
                     <div className="bg-slate-200 h-48 w-full"></div>
-                    <div className="p-3">
+                    <div className="p-4">
                       <div className="h-5 bg-slate-200 rounded w-3/4 mb-2"></div>
                       <div className="h-4 bg-slate-200 rounded w-1/2 mb-1"></div>
                       <div className="flex justify-between mt-2">
@@ -363,7 +363,7 @@ const Home = () => {
                 ))}
               </div>
             ) : paginatedBusinesses.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 px-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 mb-8 px-2">
                 {paginatedBusinesses.map((business) => (
                   <DestinationCard 
                     key={business.id} 

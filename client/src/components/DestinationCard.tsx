@@ -62,8 +62,8 @@ const DestinationCard = ({ business, onClick, isHighlighted }: DestinationCardPr
   const hasWifi = Array.isArray(amenities) && amenities.includes("wifi");
   
   // Format price level to show price with appropriate unit based on category
-  const formatPrice = (price: number | undefined) => {
-    if (!price) return "Price on request";
+  const formatPrice = (price: number | null | undefined) => {
+    if (price === null || price === undefined) return "Price on request";
     return `$${price.toLocaleString()}`;
   };
   
@@ -207,7 +207,7 @@ const DestinationCard = ({ business, onClick, isHighlighted }: DestinationCardPr
       </div>
       
       {/* Card footer with price and action buttons */}
-      <div className="p-3 bg-white flex justify-between items-center">
+      <div className="p-4 bg-white flex justify-between items-center">
         <div>
           <span className="font-bold text-lg">{formatPrice(priceLevel)}</span>
           <span className="text-xs text-slate-500 ml-1">{getPriceUnit()}</span>

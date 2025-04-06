@@ -86,8 +86,8 @@ const CategoryNavigation = ({ onCategoryChange }: CategoryNavigationProps) => {
   if (isLoading) {
     return (
       <div className="sticky top-16 z-40 bg-white border-b border-slate-200 shadow-sm">
-        <div className="container mx-auto px-4">
-          <div className="flex overflow-x-auto py-3 -mb-px scrollbar-hide">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-screen-2xl">
+          <div className="flex overflow-x-auto py-4 -mb-px scrollbar-hide">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="flex items-center whitespace-nowrap px-4 py-2 animate-pulse bg-slate-200 rounded-md mr-2 h-8 w-24"></div>
             ))}
@@ -99,13 +99,13 @@ const CategoryNavigation = ({ onCategoryChange }: CategoryNavigationProps) => {
 
   return (
     <div className="sticky top-16 z-40 bg-white border-b border-slate-200 shadow-sm">
-      <div className="container mx-auto px-4">
-        <div className="flex overflow-x-auto py-3 -mb-px scrollbar-hide">
-          <div className="relative mr-2">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-screen-2xl">
+        <div className="flex overflow-x-auto py-4 -mb-px scrollbar-hide">
+          <div className="relative mr-3">
             <Button 
               variant={selectedCategoryId === null ? "default" : "outline"}
               size="sm"
-              className="whitespace-nowrap rounded-full"
+              className="whitespace-nowrap rounded-full px-4"
               onClick={() => handleCategoryClick(null)}
             >
               All Places
@@ -119,11 +119,11 @@ const CategoryNavigation = ({ onCategoryChange }: CategoryNavigationProps) => {
           </div>
           
           {categories?.map((category) => (
-            <div key={category.id} className="relative mr-2">
+            <div key={category.id} className="relative mr-3">
               <Button 
                 variant={selectedCategoryId === category.id ? "default" : "outline"}
                 size="sm"
-                className="whitespace-nowrap rounded-full"
+                className="whitespace-nowrap rounded-full px-4"
                 onClick={() => handleCategoryClick(category.id)}
               >
                 <i className={`${getIconForCategory(category.icon)} mr-2`}></i>
@@ -143,7 +143,7 @@ const CategoryNavigation = ({ onCategoryChange }: CategoryNavigationProps) => {
             <Button 
               variant="outline"
               size="sm"
-              className="whitespace-nowrap mr-2 rounded-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="whitespace-nowrap mr-3 rounded-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
               onClick={() => {
                 setSelectedCategoryId(null);
                 navigate('/');

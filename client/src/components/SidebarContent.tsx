@@ -124,7 +124,7 @@ const SidebarContent = () => {
   ];
 
   return (
-    <div className="sidebar-content">
+    <div className="sidebar-content px-2 md:px-4">
       <div className="mb-6">
         <h3 className="text-lg font-medium mb-4">Upcoming Events</h3>
         {events.map((event, index) => (
