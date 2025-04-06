@@ -20,7 +20,8 @@ import {
   Star, 
   Globe, 
   DollarSign,
-  ArrowRight
+  ArrowRight,
+  Filter
 } from 'lucide-react';
 import { getPriceLevelSymbol } from '@/lib/utils';
 import DestinationCard from '@/components/DestinationCard';
@@ -44,6 +45,7 @@ export default function BusinessDetailsModal({
   businessId 
 }: BusinessDetailsModalProps) {
   const [activeTab, setActiveTab] = useState('details');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<number | null>(null);
   
   // Fetch the selected business
   const { data: business, isLoading: isBusinessLoading } = useQuery<Business>({
@@ -68,6 +70,15 @@ export default function BusinessDetailsModal({
     // Same category, but not the same business
     b.id !== businessId && b.categoryId === business?.categoryId
   ).slice(0, 5);
+  
+  // Get nearby businesses (simulated based on category - in a real app, this would use geolocation)
+  const getNearbyBusinesses = () => {
+    if (!business) return [];
+    
+    // In a real app, this would filter by distance from the current business
+    // For now, let's just return other businesses (not including this one)
+    return allBusinesses.filter(b => b.id !== businessId);
+  };
   
   // Get recommended businesses (top 5 from other categories of interest)
   const recommendedCategories = business?.categoryId 
@@ -172,10 +183,11 @@ export default function BusinessDetailsModal({
             </div>
             
             <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="nearby">Nearby</TabsTrigger>
                 <TabsTrigger value="related">Related</TabsTrigger>
-                <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+                <TabsTrigger value="recommendations">Recommended</TabsTrigger>
               </TabsList>
               
               <TabsContent value="details" className="mt-4">
@@ -247,6 +259,65 @@ export default function BusinessDetailsModal({
                       </div>
                     )}
                   </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="nearby" className="mt-4">
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Nearby Places</h3>
+                    <div className="flex items-center gap-1 text-sm text-slate-500">
+                      <Filter className="w-4 h-4" />
+                      <span>Filter by category:</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Badge 
+                      variant={selectedCategoryFilter === null ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedCategoryFilter(null)}
+                    >
+                      All
+                    </Badge>
+                    {categories.map(category => (
+                      <Badge 
+                        key={category.id}
+                        variant={selectedCategoryFilter === category.id ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => setSelectedCategoryFilter(category.id)}
+                      >
+                        {category.name}
+                      </Badge>
+                    ))}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {getNearbyBusinesses()
+                      .filter(b => selectedCategoryFilter === null || b.categoryId === selectedCategoryFilter)
+                      .slice(0, 6)
+                      .map(nearby => (
+                        <div key={nearby.id} className="scale-90 origin-top-left">
+                          <DestinationCard 
+                            business={nearby}
+                            onClick={() => {
+                              // Close current modal and open new one with this business
+                              onClose();
+                              setTimeout(() => {
+                                // Open new modal after a short delay
+                                window.dispatchEvent(new CustomEvent('openBusinessDetails', { 
+                                  detail: { businessId: nearby.id } 
+                                }));
+                              }, 100);
+                            }}
+                          />
+                        </div>
+                    ))}
+                  </div>
+                  
+                  {getNearbyBusinesses().filter(b => selectedCategoryFilter === null || b.categoryId === selectedCategoryFilter).length === 0 && (
+                    <p className="text-slate-500 text-center py-8">No nearby places found in this category.</p>
+                  )}
                 </div>
               </TabsContent>
               
