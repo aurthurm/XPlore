@@ -15,6 +15,7 @@ import BusinessClaim from "@/pages/BusinessClaim";
 import Itineraries from "@/pages/Itineraries";
 import ItineraryDetails from "@/pages/ItineraryDetails";
 import ItineraryMap from "@/pages/ItineraryMap";
+import Explore from "@/pages/Explore";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 
@@ -38,6 +39,7 @@ function Router() {
         <Switch>
           <Route path="/" component={Home} />
           <Route path="/business/:id" component={BusinessDetails} />
+          <Route path="/explore" component={Explore} />
           <Route path="/auth" component={AuthPage} />
           <ProtectedRoute path="/dashboard" component={BusinessDashboard} />
           <ProtectedRoute path="/claim/:id?" component={BusinessClaim} />

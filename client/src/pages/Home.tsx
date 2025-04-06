@@ -123,7 +123,12 @@ const Home = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Sidebar - Filters (visible only on desktop) */}
           <div className="lg:col-span-1 order-2 lg:order-1 hidden lg:block">
-            <FilterSidebar />
+            <FilterSidebar 
+              categories={[]}
+              selectedCategory={activeCategoryId}
+              onCategoryChange={handleCategoryChange}
+              isLoading={false}
+            />
           </div>
           
           {/* Main Content Area */}

@@ -22,7 +22,7 @@ export default function MainNav() {
 
   const navItems = [
     { name: "Home", path: "/" },
-    { name: "Explore", path: "/businesses" },
+    { name: "Explore", path: "/explore" },
     { name: "Itineraries", path: "/itineraries" },
   ];
 

@@ -27,8 +27,10 @@ const FilterDrawer = ({ isOpen, onClose }: FilterDrawerProps) => {
         
         <div className="p-4 overflow-y-auto" style={{ height: "calc(100vh - 137px)" }}>
           <FilterSidebar
-            onFilterChange={() => setFilterChanged(true)}
-            isInDrawer={true}
+            categories={[]}
+            selectedCategory={null}
+            onCategoryChange={() => setFilterChanged(true)}
+            isLoading={false}
           />
         </div>
         
