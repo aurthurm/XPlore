@@ -11,8 +11,6 @@ import Footer from "@/components/layout/Footer";
 import HeroSection from "@/components/HeroSection";
 import CategoryNavigation from "@/components/CategoryNavigation";
 import BusinessCard from "@/components/BusinessCard";
-import FilterSidebar from "@/components/FilterSidebar";
-import FilterDrawer from "@/components/FilterDrawer";
 import FeaturedDestinations from "@/components/FeaturedDestinations";
 import BusinessOwnerCTA from "@/components/BusinessOwnerCTA";
 import ImportDataSection from "@/components/ImportDataSection";
@@ -22,14 +20,12 @@ import DownloadSection from "@/components/DownloadSection";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Filter, MapPin, Loader2 } from "lucide-react";
+import { MapPin, Loader2 } from "lucide-react";
 
 const Home = () => {
   const [location, navigate] = useLocation();
   const [selectedBusinessId, setSelectedBusinessId] = useState<number | undefined>();
   const [sortBy, setSortBy] = useState<string>("relevance");
-  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -51,18 +47,11 @@ const Home = () => {
     refetchOnWindowFocus: false,
   });
 
-  // Handle category change from CategoryNavigation
+  // Empty function for category navigation
   const handleCategoryChange = useCallback((categoryId: number | null) => {
-    setActiveCategoryId(categoryId);
+    // Actual filtering is handled by the CategoryNavigation component directly
+    // This is just a placeholder to satisfy the component props
   }, []);
-
-  // Clear all filters
-  const clearFilters = useCallback(() => {
-    navigate('/');
-    setActiveCategoryId(null);
-    // Invalidate and refetch businesses
-    queryClient.invalidateQueries({ queryKey: ['/api/businesses'] });
-  }, [navigate, queryClient]);
 
   useEffect(() => {
     if (error) {
@@ -98,20 +87,6 @@ const Home = () => {
     return sorted;
   }, [businesses, sortBy]);
 
-  // Get active filters count
-  const activeFiltersCount = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    let count = 0;
-    
-    if (params.has('categoryId')) count++;
-    if (params.has('keyword')) count++;
-    if (params.has('priceLevel')) count++;
-    if (params.has('rating')) count++;
-    if (params.has('amenities')) count++;
-    
-    return count;
-  }, [location]);
-
   return (
     <>
       <HeroSection />
@@ -119,59 +94,9 @@ const Home = () => {
       <CategoryNavigation onCategoryChange={handleCategoryChange} />
       
       <main className="container mx-auto px-4 py-8 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Sidebar - Filters (visible only on desktop) */}
-          <div className="lg:col-span-1 order-2 lg:order-1 hidden lg:block">
-            <FilterSidebar 
-              categories={[]}
-              selectedCategory={activeCategoryId}
-              onCategoryChange={handleCategoryChange}
-              isLoading={false}
-            />
-          </div>
-          
+        <div className="grid grid-cols-1 gap-8">
           {/* Main Content Area */}
-          <div className={`${isMobile ? 'col-span-1' : 'lg:col-span-2'} order-1 lg:order-2`}>
-            {/* Filter Drawer for Mobile */}
-            <FilterDrawer 
-              isOpen={isFilterDrawerOpen} 
-              onClose={() => setIsFilterDrawerOpen(false)} 
-            />
-            
-            {/* Floating Filter Button (mobile only) */}
-            {isMobile && (
-              <button
-                onClick={() => setIsFilterDrawerOpen(true)}
-                className="fixed bottom-6 right-6 z-50 bg-primary-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center"
-                aria-label="Open filters"
-              >
-                <Filter className="h-5 w-5 mr-2" />
-                <span>Filters</span>
-                {activeFiltersCount > 0 && (
-                  <Badge className="ml-2 bg-white text-primary-600">
-                    {activeFiltersCount}
-                  </Badge>
-                )}
-              </button>
-            )}
-            
-            {/* Active Filters (desktop) */}
-            {activeFiltersCount > 0 && !isMobile && (
-              <div className="mb-4 flex items-center">
-                <span className="text-sm text-slate-600 mr-2">Active filters:</span>
-                <Badge variant="outline" className="mr-2">
-                  {activeFiltersCount} {activeFiltersCount === 1 ? 'filter' : 'filters'}
-                </Badge>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={clearFilters}
-                  className="text-xs text-slate-500 hover:text-slate-800"
-                >
-                  Clear all
-                </Button>
-              </div>
-            )}
+          <div className="col-span-1">
             
             {/* Listing Results */}
             <div>
@@ -245,7 +170,10 @@ const Home = () => {
                   <p className="text-slate-500 mb-6">Try adjusting your search or filters to find what you're looking for.</p>
                   <Button 
                     variant="outline"
-                    onClick={clearFilters}
+                    onClick={() => {
+                      navigate('/');
+                      queryClient.invalidateQueries({ queryKey: ['/api/businesses'] });
+                    }}
                   >
                     Clear all filters
                   </Button>

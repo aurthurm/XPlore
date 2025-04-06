@@ -132,6 +132,23 @@ const CategoryNavigation = ({ onCategoryChange }: CategoryNavigationProps) => {
               )}
             </Button>
           ))}
+          
+          {/* Clear filters button - shown only when any filter is active */}
+          {window.location.search && (
+            <Button 
+              variant="outline"
+              size="sm"
+              className="whitespace-nowrap mr-2 rounded-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={() => {
+                setSelectedCategoryId(null);
+                navigate('/');
+                queryClient.invalidateQueries({ queryKey: ['/api/businesses'] });
+              }}
+            >
+              <i className="fas fa-times mr-2"></i>
+              Clear Filters
+            </Button>
+          )}
         </div>
       </div>
     </div>
