@@ -8,7 +8,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import Footer from "@/components/layout/Footer";
 
 // Page components
-import HeroSection from "@/components/HeroSection";
 import CategoryNavigation from "@/components/CategoryNavigation";
 import DestinationCard from "@/components/DestinationCard";
 import SidebarContent from "@/components/SidebarContent";
@@ -122,8 +121,6 @@ const Home = () => {
 
   return (
     <>
-      <HeroSection />
-      
       <CategoryNavigation onCategoryChange={handleCategoryChange} />
       
       <main className="container mx-auto px-4 py-8 relative">
