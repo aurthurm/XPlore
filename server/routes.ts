@@ -972,6 +972,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Add sample categories if they don't exist
+      const existingCategories = await storage.getCategories();
+      if (existingCategories.length === 0) {
+        const sampleCategories = [
+          {
+            name: "Accommodation",
+            icon: "bed"
+          },
+          {
+            name: "Dining",
+            icon: "utensils"
+          },
+          {
+            name: "Attractions",
+            icon: "camera"
+          },
+          {
+            name: "Shopping",
+            icon: "shopping-bag"
+          },
+          {
+            name: "Transportation",
+            icon: "car"
+          },
+          {
+            name: "Tours",
+            icon: "map"
+          }
+        ];
+        
+        for (const category of sampleCategories) {
+          await storage.createCategory(category);
+        }
+      }
+      
       // Sample data for initial load
       const sampleBusinesses = [
         {
@@ -1068,15 +1103,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Create sample itinerary days
           const day1 = await storage.createItineraryDay({
             itineraryId: sampleItinerary.id,
+            dayNumber: 1,
             date: new Date().toISOString().split('T')[0],
-            title: "Victoria Falls Exploration",
             notes: "Visiting the majestic Victoria Falls"
           });
           
           const day2 = await storage.createItineraryDay({
             itineraryId: sampleItinerary.id,
+            dayNumber: 2,
             date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            title: "Great Zimbabwe Ruins",
             notes: "Exploring the ancient ruins"
           });
           
@@ -1086,7 +1121,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             businessId: 1, // Victoria Falls Hotel
             startTime: "09:00",
             endTime: "12:00",
-            notes: "Tour of the falls with a local guide",
+            title: "Victoria Falls Tour",
+            description: "Tour of the falls with a local guide",
             type: "attraction"
           });
           
@@ -1095,7 +1131,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             businessId: 1, // Victoria Falls Hotel
             startTime: "13:00",
             endTime: "15:00",
-            notes: "Lunch at the hotel restaurant",
+            title: "Lunch at Hotel Restaurant",
+            description: "Lunch at the hotel restaurant",
             type: "dining"
           });
           
@@ -1104,7 +1141,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             businessId: 2, // Great Zimbabwe Ruins
             startTime: "10:00",
             endTime: "14:00",
-            notes: "Guided tour of the ancient city",
+            title: "Great Zimbabwe Ruins Tour",
+            description: "Guided tour of the ancient city",
             type: "attraction"
           });
         }

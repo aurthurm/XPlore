@@ -38,11 +38,12 @@ const CategoryNavigation = () => {
 
   const getIconForCategory = (icon: string) => {
     switch (icon) {
-      case 'hotel': return 'fas fa-hotel';
+      case 'bed': return 'fas fa-bed';
       case 'utensils': return 'fas fa-utensils';
-      case 'mountain': return 'fas fa-mountain';
-      case 'concierge-bell': return 'fas fa-concierge-bell';
+      case 'camera': return 'fas fa-camera';
       case 'shopping-bag': return 'fas fa-shopping-bag';
+      case 'car': return 'fas fa-car';
+      case 'map': return 'fas fa-map';
       default: return 'fas fa-circle';
     }
   };
