@@ -5,9 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 
 interface BusinessCardProps {
   business: Business;
+  isHighlighted?: boolean;
+  onClick?: () => void;
 }
 
-const BusinessCard = ({ business }: BusinessCardProps) => {
+const BusinessCard = ({ business, isHighlighted = false, onClick }: BusinessCardProps) => {
   const [isFavorite, setIsFavorite] = useState(false);
 
   const toggleFavorite = (e: React.MouseEvent) => {
@@ -45,7 +47,12 @@ const BusinessCard = ({ business }: BusinessCardProps) => {
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200">
+    <Card 
+      className={`overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer ${
+        isHighlighted ? 'ring-2 ring-primary-500 shadow-lg' : ''
+      }`}
+      onClick={onClick}
+    >
       <div className="relative">
         <img 
           src={business.images?.[0] || 'https://images.unsplash.com/photo-1533460004989-cef01064af7e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'} 
@@ -60,8 +67,11 @@ const BusinessCard = ({ business }: BusinessCardProps) => {
             <i className={`${isFavorite ? 'fas text-red-500' : 'far'} fa-heart text-slate-600`}></i>
           </button>
         </div>
-        <div className="absolute bottom-2 left-2">
+        <div className="absolute bottom-2 left-2 flex gap-2">
           {getBusinessLabel()}
+          {isHighlighted && (
+            <span className="tag bg-primary-500 text-white">Selected</span>
+          )}
         </div>
       </div>
       

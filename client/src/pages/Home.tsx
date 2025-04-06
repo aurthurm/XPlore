@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Business } from "@/types";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -21,26 +21,49 @@ import DownloadSection from "@/components/DownloadSection";
 
 // UI components
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Filter, MapPin, Loader2 } from "lucide-react";
 
 const Home = () => {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const [selectedBusinessId, setSelectedBusinessId] = useState<number | undefined>();
   const [sortBy, setSortBy] = useState<string>("relevance");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Build API URL with filters from URL params
-  const buildApiUrl = () => {
+  const buildApiUrl = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
     return `/api/businesses?${params.toString()}`;
-  };
+  }, [location]);
 
   // Fetch businesses
-  const { data: businesses, isLoading, error } = useQuery<Business[]>({
+  const { 
+    data: businesses = [], 
+    isLoading, 
+    error,
+    isFetching 
+  } = useQuery<Business[]>({
     queryKey: [buildApiUrl()],
+    refetchOnWindowFocus: false,
   });
+
+  // Handle category change from CategoryNavigation
+  const handleCategoryChange = useCallback((categoryId: number | null) => {
+    setActiveCategoryId(categoryId);
+  }, []);
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    navigate('/');
+    setActiveCategoryId(null);
+    // Invalidate and refetch businesses
+    queryClient.invalidateQueries({ queryKey: ['/api/businesses'] });
+  }, [navigate, queryClient]);
 
   useEffect(() => {
     if (error) {
@@ -53,7 +76,7 @@ const Home = () => {
   }, [error, toast]);
 
   // Sort businesses based on selected option
-  const sortedBusinesses = () => {
+  const sortedBusinesses = useMemo(() => {
     if (!businesses) return [];
     
     let sorted = [...businesses];
@@ -74,13 +97,27 @@ const Home = () => {
     }
     
     return sorted;
-  };
+  }, [businesses, sortBy]);
+
+  // Get active filters count
+  const activeFiltersCount = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    let count = 0;
+    
+    if (params.has('categoryId')) count++;
+    if (params.has('keyword')) count++;
+    if (params.has('priceLevel')) count++;
+    if (params.has('rating')) count++;
+    if (params.has('amenities')) count++;
+    
+    return count;
+  }, [location]);
 
   return (
     <>
       <HeroSection />
       
-      <CategoryNavigation />
+      <CategoryNavigation onCategoryChange={handleCategoryChange} />
       
       <main className="container mx-auto px-4 py-8 relative">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -109,24 +146,58 @@ const Home = () => {
               <button
                 onClick={() => setIsFilterDrawerOpen(true)}
                 className="fixed bottom-6 right-6 z-50 bg-primary-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center"
+                aria-label="Open filters"
               >
-                <i className="fas fa-filter mr-2"></i>
+                <Filter className="h-5 w-5 mr-2" />
                 <span>Filters</span>
+                {activeFiltersCount > 0 && (
+                  <Badge className="ml-2 bg-white text-primary-600">
+                    {activeFiltersCount}
+                  </Badge>
+                )}
               </button>
+            )}
+            
+            {/* Active Filters (desktop) */}
+            {activeFiltersCount > 0 && !isMobile && (
+              <div className="mb-4 flex items-center">
+                <span className="text-sm text-slate-600 mr-2">Active filters:</span>
+                <Badge variant="outline" className="mr-2">
+                  {activeFiltersCount} {activeFiltersCount === 1 ? 'filter' : 'filters'}
+                </Badge>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={clearFilters}
+                  className="text-xs text-slate-500 hover:text-slate-800"
+                >
+                  Clear all
+                </Button>
+              </div>
             )}
             
             {/* Listing Results */}
             <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="font-medium text-xl">
-                  {isLoading ? "Loading..." : `Places (${businesses?.length || 0})`}
-                </h2>
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center">
+                  <h2 className="font-medium text-xl mr-3">
+                    Places
+                  </h2>
+                  {isFetching ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                  ) : (
+                    <Badge variant="outline" className="bg-slate-100">
+                      {businesses?.length || 0}
+                    </Badge>
+                  )}
+                </div>
                 <div className="flex items-center">
                   <span className="text-sm text-slate-600 mr-2">Sort by:</span>
                   <select 
                     className="border border-slate-300 rounded-md text-sm py-1.5 px-2"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
+                    aria-label="Sort businesses"
                   >
                     <option value="relevance">Relevance</option>
                     <option value="rating-high">Rating: High to Low</option>
@@ -138,7 +209,7 @@ const Home = () => {
               
               {/* Listing Cards Grid */}
               {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
                   {[1, 2, 3, 4].map(i => (
                     <div key={i} className="animate-pulse bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
                       <div className="bg-slate-200 h-48 w-full"></div>
@@ -158,29 +229,34 @@ const Home = () => {
                   ))}
                 </div>
               ) : businesses?.length ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-                  {sortedBusinesses().map(business => (
-                    <BusinessCard key={business.id} business={business} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                  {sortedBusinesses.map(business => (
+                    <BusinessCard 
+                      key={business.id} 
+                      business={business} 
+                      isHighlighted={selectedBusinessId === business.id}
+                      onClick={() => setSelectedBusinessId(business.id)}
+                    />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <div className="text-4xl text-slate-300 mb-4">
-                    <i className="fas fa-map-marker-alt"></i>
+                <div className="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-400 mb-4">
+                    <MapPin className="h-8 w-8" />
                   </div>
                   <h3 className="text-xl font-medium mb-2">No results found</h3>
                   <p className="text-slate-500 mb-6">Try adjusting your search or filters to find what you're looking for.</p>
                   <Button 
                     variant="outline"
-                    onClick={() => window.location.href = '/'}
+                    onClick={clearFilters}
                   >
                     Clear all filters
                   </Button>
                 </div>
               )}
               
-              {/* Load More - only show if we have results */}
-              {businesses?.length ? (
+              {/* Load More - only show if we have results and more to load */}
+              {businesses && businesses.length > 9 ? (
                 <div className="text-center">
                   <Button variant="outline" className="px-8">
                     Load More

@@ -1155,6 +1155,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Maps API Key endpoint
+  app.get('/api/config/maps', (req, res) => {
+    // Return the Google Maps API key from environment variable
+    res.json({ apiKey: process.env.GOOGLE_MAPS_API_KEY || '' });
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

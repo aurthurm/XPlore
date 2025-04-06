@@ -1,39 +1,68 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Category } from "@/types";
-import { useQuery } from "@tanstack/react-query";
+import { Category, Business } from "@/types";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
-const CategoryNavigation = () => {
+interface CategoryNavigationProps {
+  onCategoryChange?: (categoryId: number | null) => void;
+}
+
+const CategoryNavigation = ({ onCategoryChange }: CategoryNavigationProps) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [location, navigate] = useLocation();
+  const queryClient = useQueryClient();
   
   // Get categories from API
   const { data: categories, isLoading } = useQuery<Category[]>({
     queryKey: ['/api/categories'],
   });
 
+  // Get business count for each category
+  const { data: businesses = [] } = useQuery<Business[]>({
+    queryKey: ['/api/businesses'],
+  });
+
   // Parse search params to set initial selected category
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const categoryId = params.get('categoryId');
+    
     if (categoryId) {
-      setSelectedCategoryId(parseInt(categoryId));
+      const id = parseInt(categoryId);
+      setSelectedCategoryId(id);
+    } else {
+      setSelectedCategoryId(null);
     }
   }, [location]);
 
+  // Notify parent component when category changes
+  useEffect(() => {
+    if (onCategoryChange) {
+      onCategoryChange(selectedCategoryId);
+    }
+  }, [selectedCategoryId, onCategoryChange]);
+
   const handleCategoryClick = (categoryId: number | null) => {
-    setSelectedCategoryId(categoryId);
+    // If clicking the same category again, deselect it
+    const newCategoryId = selectedCategoryId === categoryId ? null : categoryId;
+    setSelectedCategoryId(newCategoryId);
     
     // Update URL with selected category
     const params = new URLSearchParams(window.location.search);
     
-    if (categoryId === null) {
+    if (newCategoryId === null) {
       params.delete('categoryId');
     } else {
-      params.set('categoryId', categoryId.toString());
+      params.set('categoryId', newCategoryId.toString());
     }
     
     navigate(`/?${params.toString()}`);
+    
+    // Invalidate the businesses query to refetch with the new category filter
+    queryClient.invalidateQueries({ queryKey: ['/api/businesses'] });
   };
 
   const getIconForCategory = (icon: string) => {
@@ -48,13 +77,19 @@ const CategoryNavigation = () => {
     }
   };
 
+  // Count businesses in each category
+  const getCategoryCount = (categoryId: number) => {
+    if (!businesses || !Array.isArray(businesses)) return 0;
+    return businesses.filter((business: any) => business.categoryId === categoryId).length;
+  };
+
   if (isLoading) {
     return (
       <div className="sticky top-16 z-40 bg-white border-b border-slate-200 shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex overflow-x-auto py-3 -mb-px scrollbar-hide">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="whitespace-nowrap px-4 py-2 animate-pulse bg-slate-200 rounded-md mr-2 h-8 w-20"></div>
+              <div key={i} className="flex items-center whitespace-nowrap px-4 py-2 animate-pulse bg-slate-200 rounded-md mr-2 h-8 w-24"></div>
             ))}
           </div>
         </div>
@@ -66,30 +101,36 @@ const CategoryNavigation = () => {
     <div className="sticky top-16 z-40 bg-white border-b border-slate-200 shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex overflow-x-auto py-3 -mb-px scrollbar-hide">
-          <button 
-            className={`whitespace-nowrap px-4 py-2 border-b-2 font-medium ${
-              selectedCategoryId === null 
-                ? 'border-primary-600 text-primary-600' 
-                : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
+          <Button 
+            variant={selectedCategoryId === null ? "default" : "outline"}
+            size="sm"
+            className="whitespace-nowrap mr-2 rounded-full"
             onClick={() => handleCategoryClick(null)}
           >
-            All
-          </button>
+            All Places
+            {selectedCategoryId === null && (
+              <Badge variant="secondary" className="ml-2 bg-white text-primary-600">
+                {Array.isArray(businesses) ? businesses.length : 0}
+              </Badge>
+            )}
+          </Button>
           
           {categories?.map((category) => (
-            <button 
+            <Button 
               key={category.id}
-              className={`whitespace-nowrap px-4 py-2 border-b-2 font-medium ${
-                selectedCategoryId === category.id 
-                  ? 'border-primary-600 text-primary-600' 
-                  : 'border-transparent text-slate-600 hover:text-slate-900'
-              }`}
+              variant={selectedCategoryId === category.id ? "default" : "outline"}
+              size="sm"
+              className="whitespace-nowrap mr-2 rounded-full"
               onClick={() => handleCategoryClick(category.id)}
             >
               <i className={`${getIconForCategory(category.icon)} mr-2`}></i>
               {category.name}
-            </button>
+              {selectedCategoryId === category.id && (
+                <Badge variant="secondary" className="ml-2 bg-white text-primary-600">
+                  {getCategoryCount(category.id)}
+                </Badge>
+              )}
+            </Button>
           ))}
         </div>
       </div>
