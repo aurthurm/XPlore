@@ -4,7 +4,8 @@ import { useLocation } from 'wouter';
 import { Itinerary, ItineraryDay, ItineraryItem, Business } from '@shared/schema';
 import { 
   Plus, Calendar, ListChecks, Trash2, Edit, X, ChevronRight, Map, 
-  Heart, HeartOff, Clock, MapPin, Car, Hotel, Utensils, Mountain, Ticket 
+  Heart, HeartOff, Clock, MapPin, Car, Hotel, Utensils, Mountain, Ticket,
+  ChevronUp, ChevronDown
 } from 'lucide-react';
 import { format, addDays, isSameDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -64,6 +65,7 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
   const [newDayOpen, setNewDayOpen] = useState(false);
   const [newItemOpen, setNewItemOpen] = useState(false);
   const [dayItems, setDayItems] = useState<Record<number, ItineraryItem[]>>({});
+  const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({});
   
   // Item form state
   const [itemType, setItemType] = useState<string>('activity');
@@ -447,6 +449,14 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
       resetForm();
     }
   }, [isCreateModalOpen]);
+  
+  // Toggle day expansion
+  const toggleDayExpansion = (dayId: number) => {
+    setExpandedDays(prev => ({
+      ...prev,
+      [dayId]: !prev[dayId]
+    }));
+  };
 
   return (
     <>
@@ -1009,144 +1019,171 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
                   <div className="space-y-4">
                     {days
                       .sort((a, b) => a.dayNumber - b.dayNumber)
-                      .map((day) => (
-                        <Card key={day.id}>
-                          <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <CardTitle className="text-lg">Day {day.dayNumber}: {format(new Date(day.date), 'EEEE, MMMM d')}</CardTitle>
-                                {day.notes && (
-                                  <CardDescription>{day.notes}</CardDescription>
-                                )}
+                      .map((day) => {
+                        const dayItemsCount = (dayItems[day.id] || []).length;
+                        const isExpanded = expandedDays[day.id] || false;
+                        
+                        return (
+                          <Card key={day.id} className="overflow-hidden">
+                            <CardHeader 
+                              className="pb-2 cursor-pointer hover:bg-muted/50"
+                              onClick={() => toggleDayExpansion(day.id)}
+                            >
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-grow">
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                      Day {day.dayNumber}: {format(new Date(day.date), 'EEEE, MMMM d')}
+                                      {dayItemsCount > 0 && (
+                                        <Badge variant="outline" className="ml-2 bg-primary/10 hover:bg-primary/20 border-primary/10 text-primary">
+                                          {dayItemsCount} {dayItemsCount === 1 ? 'item' : 'items'}
+                                        </Badge>
+                                      )}
+                                    </CardTitle>
+                                    {day.notes && (
+                                      <CardDescription>{day.notes}</CardDescription>
+                                    )}
+                                  </div>
+                                  <div className="text-muted-foreground">
+                                    {isExpanded ? (
+                                      <ChevronUp className="h-5 w-5" />
+                                    ) : (
+                                      <ChevronDown className="h-5 w-5" />
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex gap-1 z-10" onClick={(e) => e.stopPropagation()}>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => setSelectedDayId(day.id)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      if (confirm('Are you sure you want to delete this day? All items will be lost.')) {
+                                        // Implement delete day functionality
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="flex gap-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => setSelectedDayId(day.id)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  className="text-destructive"
-                                  onClick={() => {
-                                    if (confirm('Are you sure you want to delete this day? All items will be lost.')) {
-                                      // Implement delete day functionality
-                                    }
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            {dayItems[day.id]?.length > 0 ? (
-                              <div className="space-y-3">
-                                {(dayItems[day.id] || [])
-                                  .sort((a, b) => {
-                                    // Sort by start time if available
-                                    if (!a.startTime && !b.startTime) return 0;
-                                    if (!a.startTime) return 1;
-                                    if (!b.startTime) return -1;
-                                    
-                                    // Compare directly as strings since format is HH:MM:SS
-                                    return a.startTime.localeCompare(b.startTime);
-                                  })
-                                  .map((item) => (
-                                    <div key={item.id} className="p-3 border rounded-md bg-muted/30">
-                                      <div className="flex justify-between items-start">
-                                        <div className="flex items-start gap-2">
-                                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                            {item.type === 'accommodation' && <Hotel className="h-4 w-4 text-primary" />}
-                                            {item.type === 'transportation' && <Car className="h-4 w-4 text-primary" />}
-                                            {item.type === 'activity' && <Mountain className="h-4 w-4 text-primary" />}
-                                            {item.type === 'custom' && <Ticket className="h-4 w-4 text-primary" />}
-                                          </div>
-                                          <div>
-                                            <h4 className="font-medium text-sm">{item.title}</h4>
-                                            {item.description && (
-                                              <p className="text-xs text-muted-foreground">{item.description}</p>
-                                            )}
-                                            <div className="flex flex-wrap gap-x-3 mt-1">
-                                              {item.startTime && (
-                                                <div className="flex items-center text-xs text-muted-foreground">
-                                                  <Clock className="h-3 w-3 mr-1" />
-                                                  {/* Format time without having to parse to Date - just extract HH:MM from the time string */}
-                                                  {item.startTime.substring(0, 5).split(':').map((n, i) => 
-                                                    i === 0 ? String(parseInt(n) % 12 || 12) : n
-                                                  ).join(':') + (parseInt(item.startTime.split(':')[0]) >= 12 ? ' PM' : ' AM')}
-                                                  
-                                                  {item.endTime && ` - ${
-                                                    item.endTime.substring(0, 5).split(':').map((n, i) => 
-                                                      i === 0 ? String(parseInt(n) % 12 || 12) : n
-                                                    ).join(':') + (parseInt(item.endTime.split(':')[0]) >= 12 ? ' PM' : ' AM')
-                                                  }`}
+                            </CardHeader>
+                            
+                            {isExpanded && (
+                              <CardContent>
+                                {dayItemsCount > 0 ? (
+                                  <div className="space-y-3">
+                                    {(dayItems[day.id] || [])
+                                      .sort((a, b) => {
+                                        // Sort by start time if available
+                                        if (!a.startTime && !b.startTime) return 0;
+                                        if (!a.startTime) return 1;
+                                        if (!b.startTime) return -1;
+                                        
+                                        // Compare directly as strings since format is HH:MM:SS
+                                        return a.startTime.localeCompare(b.startTime);
+                                      })
+                                      .map((item) => (
+                                        <div key={item.id} className="p-3 border rounded-md bg-muted/30">
+                                          <div className="flex justify-between items-start">
+                                            <div className="flex items-start gap-2">
+                                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                {item.type === 'accommodation' && <Hotel className="h-4 w-4 text-primary" />}
+                                                {item.type === 'transportation' && <Car className="h-4 w-4 text-primary" />}
+                                                {item.type === 'activity' && <Mountain className="h-4 w-4 text-primary" />}
+                                                {item.type === 'custom' && <Ticket className="h-4 w-4 text-primary" />}
+                                              </div>
+                                              <div>
+                                                <h4 className="font-medium text-sm">{item.title}</h4>
+                                                {item.description && (
+                                                  <p className="text-xs text-muted-foreground">{item.description}</p>
+                                                )}
+                                                <div className="flex flex-wrap gap-x-3 mt-1">
+                                                  {item.startTime && (
+                                                    <div className="flex items-center text-xs text-muted-foreground">
+                                                      <Clock className="h-3 w-3 mr-1" />
+                                                      {/* Format time without having to parse to Date - just extract HH:MM from the time string */}
+                                                      {item.startTime.substring(0, 5).split(':').map((n, i) => 
+                                                        i === 0 ? String(parseInt(n) % 12 || 12) : n
+                                                      ).join(':') + (parseInt(item.startTime.split(':')[0]) >= 12 ? ' PM' : ' AM')}
+                                                      
+                                                      {item.endTime && ` - ${
+                                                        item.endTime.substring(0, 5).split(':').map((n, i) => 
+                                                          i === 0 ? String(parseInt(n) % 12 || 12) : n
+                                                        ).join(':') + (parseInt(item.endTime.split(':')[0]) >= 12 ? ' PM' : ' AM')
+                                                      }`}
+                                                    </div>
+                                                  )}
+                                                  {item.location && (
+                                                    <div className="flex items-center text-xs text-muted-foreground">
+                                                      <MapPin className="h-3 w-3 mr-1" />
+                                                      {item.location}
+                                                    </div>
+                                                  )}
                                                 </div>
-                                              )}
-                                              {item.location && (
-                                                <div className="flex items-center text-xs text-muted-foreground">
-                                                  <MapPin className="h-3 w-3 mr-1" />
-                                                  {item.location}
-                                                </div>
-                                              )}
+                                              </div>
+                                            </div>
+                                            <div className="flex gap-1">
+                                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                                <Edit className="h-3 w-3" />
+                                              </Button>
+                                              <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-7 w-7 p-0 text-destructive"
+                                                onClick={() => {
+                                                  if (confirm('Are you sure you want to delete this item?')) {
+                                                    // Implement delete item functionality
+                                                  }
+                                                }}
+                                              >
+                                                <Trash2 className="h-3 w-3" />
+                                              </Button>
                                             </div>
                                           </div>
                                         </div>
-                                        <div className="flex gap-1">
-                                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                            <Edit className="h-3 w-3" />
-                                          </Button>
-                                          <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            className="h-7 w-7 p-0 text-destructive"
-                                            onClick={() => {
-                                              if (confirm('Are you sure you want to delete this item?')) {
-                                                // Implement delete item functionality
-                                              }
-                                            }}
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            ) : (
-                              <div className="text-center py-3 text-muted-foreground text-sm">
-                                <p>No activities planned for this day.</p>
-                                <Button 
-                                  variant="link" 
-                                  size="sm" 
-                                  className="mt-1"
-                                  onClick={() => {
-                                    setSelectedDayId(day.id);
-                                    setNewItemOpen(true);
-                                  }}
-                                >
-                                  Add an activity
-                                </Button>
-                              </div>
+                                      ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-3 text-muted-foreground text-sm">
+                                    <p>No activities planned for this day.</p>
+                                    <Button 
+                                      variant="link" 
+                                      size="sm" 
+                                      className="mt-1"
+                                      onClick={() => {
+                                        setSelectedDayId(day.id);
+                                        setNewItemOpen(true);
+                                      }}
+                                    >
+                                      Add an activity
+                                    </Button>
+                                  </div>
+                                )}
+                                <div className="mt-3 text-right">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedDayId(day.id);
+                                      setNewItemOpen(true);
+                                    }}
+                                  >
+                                    <Plus className="h-4 w-4 mr-1" /> Add Item
+                                  </Button>
+                                </div>
+                              </CardContent>
                             )}
-                            <div className="mt-3 text-right">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedDayId(day.id);
-                                  setNewItemOpen(true);
-                                }}
-                              >
-                                <Plus className="h-4 w-4 mr-1" /> Add Item
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                          </Card>
+                        );
+                      })}
                   </div>
                 )}
               </div>
