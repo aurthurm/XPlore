@@ -63,7 +63,15 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
   const [newDayOpen, setNewDayOpen] = useState(false);
   const [newItemOpen, setNewItemOpen] = useState(false);
-  const [dayItems, setDayItems] = useState<Record<number, ItineraryItem[]>>({}); 
+  const [dayItems, setDayItems] = useState<Record<number, ItineraryItem[]>>({});
+  
+  // Item form state
+  const [itemType, setItemType] = useState<string>('activity');
+  const [itemTitle, setItemTitle] = useState<string>('');
+  const [itemDescription, setItemDescription] = useState<string>('');
+  const [itemStartTime, setItemStartTime] = useState<string>('');
+  const [itemEndTime, setItemEndTime] = useState<string>('');
+  const [itemLocation, setItemLocation] = useState<string>('');
 
   // Form states
   const [newItineraryTitle, setNewItineraryTitle] = useState('');
@@ -207,13 +215,59 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
     }
   });
 
-  // Reset form
+  // Reset forms
   const resetForm = () => {
     setNewItineraryTitle('');
     setNewItineraryDescription('');
     setNewItineraryStartDate(undefined);
     setNewItineraryEndDate(undefined);
   };
+  
+  const resetItemForm = () => {
+    setItemType('activity');
+    setItemTitle('');
+    setItemDescription('');
+    setItemStartTime('');
+    setItemEndTime('');
+    setItemLocation('');
+  };
+  
+  // Create item mutation
+  const createItemMutation = useMutation({
+    mutationFn: async (data: {
+      title: string;
+      description?: string;
+      type: string;
+      startTime?: string;
+      endTime?: string;
+      location?: string;
+      dayId: number;
+    }) => {
+      const res = await apiRequest('POST', `/api/itinerary-days/${data.dayId}/items`, data);
+      return await res.json();
+    },
+    onSuccess: (newItem) => {
+      // Add the new item to the dayItems state
+      setDayItems(prev => ({
+        ...prev,
+        [newItem.dayId]: [...(prev[newItem.dayId] || []), newItem]
+      }));
+      
+      setNewItemOpen(false);
+      resetItemForm();
+      toast({
+        title: "Item added",
+        description: "Your item has been added to the itinerary day.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add item",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
 
   // Handle create itinerary
   const handleCreateItinerary = () => {
@@ -762,7 +816,12 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
       </Dialog>
       
       {/* Add Item Modal */}
-      <Dialog open={newItemOpen} onOpenChange={setNewItemOpen}>
+      <Dialog open={newItemOpen} onOpenChange={(open) => {
+        if (!open) {
+          resetItemForm();
+        }
+        setNewItemOpen(open);
+      }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Add Activity to Day</DialogTitle>
@@ -776,10 +835,8 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
               <select
                 id="item-type"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={selectedDayId ? 'activity' : ''}
-                onChange={(e) => {
-                  // Handle type change
-                }}
+                value={itemType}
+                onChange={(e) => setItemType(e.target.value)}
               >
                 <option value="activity">Activity</option>
                 <option value="accommodation">Accommodation</option>
@@ -792,6 +849,8 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
               <Input
                 id="item-title"
                 placeholder="Enter title"
+                value={itemTitle}
+                onChange={(e) => setItemTitle(e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -800,6 +859,8 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
                 id="item-description"
                 placeholder="Add details about this activity"
                 rows={2}
+                value={itemDescription}
+                onChange={(e) => setItemDescription(e.target.value)}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -808,6 +869,8 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
                 <Input
                   id="item-start-time"
                   type="time"
+                  value={itemStartTime}
+                  onChange={(e) => setItemStartTime(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -815,6 +878,8 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
                 <Input
                   id="item-end-time"
                   type="time"
+                  value={itemEndTime}
+                  onChange={(e) => setItemEndTime(e.target.value)}
                 />
               </div>
             </div>
@@ -823,6 +888,8 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
               <Input
                 id="item-location"
                 placeholder="Enter location"
+                value={itemLocation}
+                onChange={(e) => setItemLocation(e.target.value)}
               />
             </div>
           </div>
@@ -830,7 +897,55 @@ export default function ItineraryDrawer({ children }: ItineraryDrawerProps) {
             <Button variant="outline" onClick={() => setNewItemOpen(false)}>
               Cancel
             </Button>
-            <Button>Add Item</Button>
+            <Button 
+              onClick={() => {
+                if (!selectedDayId) {
+                  toast({
+                    title: "Error",
+                    description: "No day selected",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                
+                if (!itemTitle.trim()) {
+                  toast({
+                    title: "Title required",
+                    description: "Please provide a title for the item",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                
+                const formattedStartTime = itemStartTime ? 
+                  new Date(`1970-01-01T${itemStartTime}:00`).toISOString() : 
+                  undefined;
+                
+                const formattedEndTime = itemEndTime ? 
+                  new Date(`1970-01-01T${itemEndTime}:00`).toISOString() : 
+                  undefined;
+                
+                createItemMutation.mutate({
+                  title: itemTitle,
+                  description: itemDescription || undefined,
+                  type: itemType,
+                  startTime: formattedStartTime,
+                  endTime: formattedEndTime,
+                  location: itemLocation || undefined,
+                  dayId: selectedDayId,
+                });
+              }}
+              disabled={createItemMutation.isPending}
+            >
+              {createItemMutation.isPending ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-background border-t-transparent rounded-full mr-2"></div>
+                  Adding...
+                </>
+              ) : (
+                "Add Item"
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
