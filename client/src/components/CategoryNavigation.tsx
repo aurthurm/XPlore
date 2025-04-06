@@ -101,36 +101,41 @@ const CategoryNavigation = ({ onCategoryChange }: CategoryNavigationProps) => {
     <div className="sticky top-16 z-40 bg-white border-b border-slate-200 shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex overflow-x-auto py-3 -mb-px scrollbar-hide">
-          <Button 
-            variant={selectedCategoryId === null ? "default" : "outline"}
-            size="sm"
-            className="whitespace-nowrap mr-2 rounded-full"
-            onClick={() => handleCategoryClick(null)}
-          >
-            All Places
-            {selectedCategoryId === null && (
-              <Badge variant="secondary" className="ml-2 bg-white text-primary-600">
-                {Array.isArray(businesses) ? businesses.length : 0}
-              </Badge>
-            )}
-          </Button>
+          <div className="relative mr-2">
+            <Button 
+              variant={selectedCategoryId === null ? "default" : "outline"}
+              size="sm"
+              className="whitespace-nowrap rounded-full"
+              onClick={() => handleCategoryClick(null)}
+            >
+              All Places
+            </Button>
+            <Badge variant={selectedCategoryId === null ? "secondary" : "outline"} 
+              className={`absolute -top-2 -right-2 z-10 min-w-5 h-5 flex items-center justify-center 
+                ${selectedCategoryId === null ? "bg-primary text-white" : "bg-slate-100 text-slate-700"}`}
+            >
+              {Array.isArray(businesses) ? businesses.length : 0}
+            </Badge>
+          </div>
           
           {categories?.map((category) => (
-            <Button 
-              key={category.id}
-              variant={selectedCategoryId === category.id ? "default" : "outline"}
-              size="sm"
-              className="whitespace-nowrap mr-2 rounded-full"
-              onClick={() => handleCategoryClick(category.id)}
-            >
-              <i className={`${getIconForCategory(category.icon)} mr-2`}></i>
-              {category.name}
-              {selectedCategoryId === category.id && (
-                <Badge variant="secondary" className="ml-2 bg-white text-primary-600">
-                  {getCategoryCount(category.id)}
-                </Badge>
-              )}
-            </Button>
+            <div key={category.id} className="relative mr-2">
+              <Button 
+                variant={selectedCategoryId === category.id ? "default" : "outline"}
+                size="sm"
+                className="whitespace-nowrap rounded-full"
+                onClick={() => handleCategoryClick(category.id)}
+              >
+                <i className={`${getIconForCategory(category.icon)} mr-2`}></i>
+                {category.name}
+              </Button>
+              <Badge variant={selectedCategoryId === category.id ? "secondary" : "outline"} 
+                className={`absolute -top-2 -right-2 z-10 min-w-5 h-5 flex items-center justify-center 
+                  ${selectedCategoryId === category.id ? "bg-primary text-white" : "bg-slate-100 text-slate-700"}`}
+              >
+                {getCategoryCount(category.id)}
+              </Badge>
+            </div>
           ))}
           
           {/* Clear filters button - shown only when any filter is active */}
