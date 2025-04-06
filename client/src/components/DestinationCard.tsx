@@ -3,7 +3,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Wifi, Star, Heart, Cloud, Sun, CloudRain, MapPin, BookmarkPlus, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Business } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Tooltip,
@@ -12,8 +11,31 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+// Use a more flexible business type to handle database nulls
+interface DatabaseBusiness {
+  id: number;
+  name: string;
+  description: string | null;
+  address: string | null;
+  city: string | null;
+  latitude: number;
+  longitude: number;
+  categoryId: number;
+  ownerId: number | null;
+  claimed: boolean | null;
+  rating: number | null;
+  priceLevel: number | null;
+  website: string | null;
+  phone: string | null;
+  images: string[] | null;
+  tags: string[] | null;
+  amenities: string[] | null;
+  createdAt: string | Date;
+  googlePlaceId: string | null;
+}
+
 interface DestinationCardProps {
-  business: Business;
+  business: DatabaseBusiness;
   onClick?: () => void;
   isHighlighted?: boolean;
   index?: number;

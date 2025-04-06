@@ -84,7 +84,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (Array.isArray(filters.amenities)) {
           parsedFilters.amenities = filters.amenities as string[];
         } else {
-          parsedFilters.amenities = [filters.amenities as string];
+          try {
+            // Try to parse as JSON string first (for our new filter sidebar)
+            parsedFilters.amenities = JSON.parse(filters.amenities as string);
+          } catch (e) {
+            // Fallback to treating as a single string if not JSON
+            parsedFilters.amenities = [filters.amenities as string];
+          }
+        }
+      }
+      
+      // Handle provinces filter (implemented as part of the keyword search for now)
+      if (filters.provinces) {
+        try {
+          // Parse the provinces from JSON string
+          const provinces = JSON.parse(filters.provinces as string);
+          
+          // If provinces are selected, use them to filter by city
+          if (provinces.length > 0) {
+            // For a real implementation, we would add province as a field in the database
+            // For now, we'll treat it as an additional keyword to search in the city field
+            const provincesKeyword = provinces.join(' ');
+            
+            if (parsedFilters.keyword) {
+              parsedFilters.keyword += ' ' + provincesKeyword;
+            } else {
+              parsedFilters.keyword = provincesKeyword;
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing provinces filter:', e);
         }
       }
       if (filters.accessibility) {

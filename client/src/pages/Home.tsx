@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Business } from "@/types";
+import { Business, Category } from "@shared/schema";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 // Layout components
@@ -14,12 +14,31 @@ import SidebarContent from "@/components/SidebarContent";
 import BusinessOwnerCTA from "@/components/BusinessOwnerCTA";
 import ImportDataSection from "@/components/ImportDataSection";
 import DownloadSection from "@/components/DownloadSection";
+import FilterSidebar from "@/components/FilterSidebar";
+import FilterDrawer from "@/components/FilterDrawer";
 
 // UI components
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Loader2, ChevronDown, Search } from "lucide-react";
+import { 
+  MapPin, 
+  Loader2, 
+  ChevronDown, 
+  Search, 
+  Filter,
+  SlidersHorizontal,
+  X
+} from "lucide-react";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetDescription, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetTrigger,
+  SheetClose
+} from "@/components/ui/sheet";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -29,15 +48,47 @@ const Home = () => {
   const [sortBy, setSortBy] = useState<string>("relevance");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [selectedProvinces, setSelectedProvinces] = useState<string[]>([]);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Get the category ID from URL params
+  const getCategoryIdFromUrl = useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    const categoryId = params.get('categoryId');
+    return categoryId ? parseInt(categoryId, 10) : null;
+  }, [location]);
+
+  const selectedCategory = getCategoryIdFromUrl();
+
+  // Fetch categories
+  const { 
+    data: categories = [], 
+    isLoading: isLoadingCategories 
+  } = useQuery<Category[]>({
+    queryKey: ['/api/categories'],
+    refetchOnWindowFocus: false
+  });
+
   // Build API URL with filters from URL params
   const buildApiUrl = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
+    
+    // Add amenities filter if any are selected
+    if (selectedAmenities.length > 0) {
+      params.set('amenities', JSON.stringify(selectedAmenities));
+    }
+    
+    // Add province filter if any are selected
+    if (selectedProvinces.length > 0) {
+      params.set('provinces', JSON.stringify(selectedProvinces));
+    }
+    
     return `/api/businesses?${params.toString()}`;
-  }, [location]);
+  }, [location, selectedAmenities, selectedProvinces]);
 
   // Fetch businesses
   const { 
@@ -45,16 +96,47 @@ const Home = () => {
     isLoading, 
     error,
     isFetching 
-  } = useQuery<Business[]>({
+  } = useQuery<any[]>({
     queryKey: [buildApiUrl()],
     refetchOnWindowFocus: false,
   });
 
-  // Empty function for category navigation
+  // Handle category change
   const handleCategoryChange = useCallback((categoryId: number | null) => {
-    // Actual filtering is handled by the CategoryNavigation component directly
-    // This is just a placeholder to satisfy the component props
+    const params = new URLSearchParams(window.location.search);
+    
+    if (categoryId) {
+      params.set('categoryId', categoryId.toString());
+    } else {
+      params.delete('categoryId');
+    }
+    
+    navigate(`/?${params.toString()}`);
     setCurrentPage(1); // Reset page when changing categories
+  }, [navigate]);
+
+  // Handle amenity change
+  const handleAmenityChange = useCallback((amenity: string) => {
+    setSelectedAmenities(prev => {
+      if (prev.includes(amenity)) {
+        return prev.filter(a => a !== amenity);
+      } else {
+        return [...prev, amenity];
+      }
+    });
+    setCurrentPage(1); // Reset page when changing filters
+  }, []);
+
+  // Handle province change
+  const handleProvinceChange = useCallback((province: string) => {
+    setSelectedProvinces(prev => {
+      if (prev.includes(province)) {
+        return prev.filter(p => p !== province);
+      } else {
+        return [...prev, province];
+      }
+    });
+    setCurrentPage(1); // Reset page when changing filters
   }, []);
 
   // Handle search input
@@ -71,6 +153,11 @@ const Home = () => {
     navigate(`/?${params.toString()}`);
     setCurrentPage(1);
   }, [searchQuery, navigate]);
+
+  // Toggle filter sidebar
+  const toggleFilter = useCallback(() => {
+    setIsFilterOpen(prev => !prev);
+  }, []);
 
   // Load more results
   const loadMore = () => {
@@ -119,6 +206,11 @@ const Home = () => {
   // Determine if there are more results to load
   const hasMoreResults = sortedBusinesses.length > paginatedBusinesses.length;
 
+  // Active filter count
+  const activeFiltersCount = useMemo(() => {
+    return selectedAmenities.length + selectedProvinces.length;
+  }, [selectedAmenities, selectedProvinces]);
+
   return (
     <>
       <CategoryNavigation onCategoryChange={handleCategoryChange} />
@@ -142,14 +234,93 @@ const Home = () => {
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Filter Sidebar - Only on desktop */}
+          {!isMobile && isFilterOpen && (
+            <div className="hidden lg:block lg:col-span-1">
+              <FilterSidebar
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onCategoryChange={handleCategoryChange}
+                selectedAmenities={selectedAmenities}
+                onAmenityChange={handleAmenityChange}
+                selectedProvinces={selectedProvinces}
+                onProvinceChange={handleProvinceChange}
+                isLoading={isLoadingCategories}
+              />
+            </div>
+          )}
+          
           {/* Main Content Area - Destinations */}
-          <div className="lg:col-span-4">
+          <div className={`lg:col-span-${isFilterOpen ? '4' : '4'}`}>
             {/* Listing Results Header */}
             <div className="flex justify-between items-center mb-4 px-2">
               <div className="flex items-center">
-                <h2 className="font-medium text-xl mr-3">
-                  Popular Destinations
-                </h2>
+                {/* Filter Button instead of "Popular Destinations" title */}
+                {isMobile ? (
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="mr-3 flex items-center gap-2"
+                      >
+                        <Filter className="h-4 w-4" />
+                        Filters
+                        {activeFiltersCount > 0 && (
+                          <Badge 
+                            variant="default" 
+                            className="h-5 w-5 flex items-center justify-center p-0 rounded-full"
+                          >
+                            {activeFiltersCount}
+                          </Badge>
+                        )}
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-[300px] sm:w-[350px] p-0">
+                      <SheetHeader className="p-4 border-b">
+                        <div className="flex justify-between items-center">
+                          <SheetTitle>Filters</SheetTitle>
+                          <SheetClose asChild>
+                            <Button size="icon" variant="ghost">
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </SheetClose>
+                        </div>
+                      </SheetHeader>
+                      <div className="overflow-y-auto p-4" style={{ height: "calc(100vh - 80px)" }}>
+                        <FilterSidebar 
+                          categories={categories}
+                          selectedCategory={selectedCategory}
+                          onCategoryChange={handleCategoryChange}
+                          selectedAmenities={selectedAmenities}
+                          onAmenityChange={handleAmenityChange}
+                          selectedProvinces={selectedProvinces}
+                          onProvinceChange={handleProvinceChange}
+                          isLoading={isLoadingCategories}
+                        />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                ) : (
+                  <Button 
+                    variant={isFilterOpen ? "default" : "outline"} 
+                    size="sm"
+                    className="mr-3 flex items-center gap-2"
+                    onClick={toggleFilter}
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                    {isFilterOpen ? "Hide Filters" : "Show Filters"}
+                    {activeFiltersCount > 0 && !isFilterOpen && (
+                      <Badge 
+                        variant="default" 
+                        className="h-5 w-5 flex items-center justify-center p-0 rounded-full"
+                      >
+                        {activeFiltersCount}
+                      </Badge>
+                    )}
+                  </Button>
+                )}
+                
                 {isFetching ? (
                   <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
                 ) : (
@@ -214,6 +385,8 @@ const Home = () => {
                   onClick={() => {
                     navigate('/');
                     setSearchQuery("");
+                    setSelectedAmenities([]);
+                    setSelectedProvinces([]);
                     queryClient.invalidateQueries({ queryKey: ['/api/businesses'] });
                   }}
                 >
@@ -237,10 +410,12 @@ const Home = () => {
             )}
           </div>
           
-          {/* Right Sidebar - News, Events, and Ads */}
-          <div className="lg:col-span-1">
-            <SidebarContent />
-          </div>
+          {/* Right Sidebar - News, Events, and Ads - Only shown when filter sidebar is not open */}
+          {(!isFilterOpen || isMobile) && (
+            <div className="lg:col-span-1">
+              <SidebarContent />
+            </div>
+          )}
         </div>
       </main>
       
